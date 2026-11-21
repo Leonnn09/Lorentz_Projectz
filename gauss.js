@@ -37,7 +37,7 @@
   missions.add({ id: 'gg-balls', screen: 'gauss', title: 'Steel-ball sniper', goal: 'With magnets and balls, launch the last ball faster than 5 m/s.' });
   missions.add({ id: 'gg-burn', screen: 'gauss', title: 'Too hot to handle', goal: 'In overload mode, keep firing until a coil overheats (an illustrative failure).' });
 
-  let active = false, cv, ctx, W = 900, H = 420, userH = +store.get('cl-h-gauss', 0) || 0, shake;
+  let active = false, cv, ctx, W = 900, H = 420, userH = +store.get('cl-h-gauss', 0) || 0, shake, v3 = null;
   const fx = new FX();
   const coilT = new Array(12).fill(T_ROOM), burnt = new Array(12).fill(false);
   let shot = null, ghost = null, charging = null, rapidT = 0, lastPanel = 0, dataDirty = true, graphDirty = true;
@@ -290,7 +290,10 @@
      ------------------------------------------------------------------ */
   const TOP = 46;                                       // the overview strip at the top of the canvas
   const axisY = () => TOP + (H - TOP) * 0.6;
-  function toScreen(x, y) { return { x: W / 2 + (x - cam.x) * cam.k, y: axisY() - (y - cam.y) * cam.k }; }
+  function toScreen(x, y) {
+    if (v3 && v3.on) { const q = v3.scene.project([x, 0, axisZ() + y]); if (q) return { x: q.x, y: q.y + TOP }; }
+    return { x: W / 2 + (x - cam.x) * cam.k, y: axisY() - (y - cam.y) * cam.k };
+  }
   const X = x => W / 2 + (x - cam.x) * cam.k, Y = y => axisY() - (y - cam.y) * cam.k;
   function sceneInfo() {
     if (shot) return { kind: shot.kind, lay: shot.lay };
@@ -718,6 +721,192 @@
     }
   }
 
+  /* ------------------------------------------------------------------
+     3-D view: the same bench seen at an angle. The camera follows the flat
+     view's camera (breech while charging, the projectile in flight, then the
+     target); drag to turn it. Field lines are the flat view's lines turned
+     around the coil's axis.
+     ------------------------------------------------------------------ */
+  const STEEL = [168, 176, 184], COPPER = [201, 128, 63], BURNT = [42, 28, 20];
+  const axisZ = () => { const { kind } = sceneInfo(); if (kind === 'coil') return (shot && shot.kind === 'coil' ? shot.r.geo : coilGeoNow()).a2 + 0.012; return ballLayout().r + 0.008; };
+  function draw3D(now) {
+    const sc = v3.scene, { kind, lay } = sceneInfo(), zA = axisZ(), Hs = H - TOP;
+    const fz = 0.5 * Math.min(W * 0.85, Hs * 1.05) / Math.tan(sc.home.fov * Math.PI / 360), viewW = W / cam.k;
+    ctx.save(); ctx.translate(0, TOP); ctx.beginPath(); ctx.rect(0, 0, W, Hs); ctx.clip();   // the scene lives below the overview strip
+    sc.begin(ctx, W, Hs, { target: [cam.x, 0, zA + cam.y * 0.6], dist: Math.max(0.03, viewW * ({ follow: 1.35, gun: 1.3, all: 1.15 }[cam.phase] || 1.0) * fz / W) });
+    const xs0 = lay.xBreech - 0.35, xs1 = lay.xT + 0.7;
+    sc.box([(xs0 + xs1) / 2, 0, -0.015], [(xs1 - xs0) / 2, 0.3, 0.015], { rgb: [30, 37, 33], layer: 'back' });
+    for (let x = Math.ceil(xs0 * 10) / 10; x <= xs1; x += 0.1) sc.line([x, -0.3, 0.0005], [x, 0.3, 0.0005], 'rgba(190,225,200,0.06)', 1, { layer: 'back' });
+    if (kind === 'coil') coil3D(sc, now, zA); else balls3D(sc, now, zA);
+    target3D(sc, now, zA);
+    sc.end();
+    ctx.restore();
+  }
+  function ruler3D(sc, x0, x1, y, z) {
+    for (let i = Math.ceil(x0 * 100); i <= Math.floor(x1 * 100); i++) {
+      const major = i % 10 === 0, mid = i % 5 === 0, L = major ? 0.012 : mid ? 0.008 : 0.004;
+      sc.line([i / 100, y, z], [i / 100, y + L, z], 'rgba(230,236,230,0.5)', 1);
+      if (major) sc.label([i / 100, y - 0.012, z], i + ' cm', { color: 'rgba(230,236,230,0.7)', font: '500 11.5px "Barlow Condensed", "Arial Narrow", sans-serif' });
+    }
+  }
+  function coil3D(sc, now, zA) {
+    const sh = shot && shot.kind === 'coil' ? shot : null;
+    const geo = sh ? sh.r.geo : coilGeoNow(), lay = sh ? sh.lay : coilLayout();
+    const stages = lay.xc.length, set = sh ? sh.set : S, t = sh ? sh.sim : 0, p = sh ? sh.posAt(t) : null;
+    const Ls = sh ? sh.r.Ls : S.slugCm / 100, d = GG.slugD;
+    const sx = p ? p.x : lay.xc[0] - GG.Lc / 2 + 0.005 - Ls / 2;
+    const Inow = p && p.I && p.I.length ? p.I : new Array(stages).fill(0), I0 = sh ? sh.r.I0 : S.current;
+    // base board with a ruler
+    const bx0 = lay.xBreech - 0.02, bx1 = lay.muzzle + 0.09;
+    sc.box([(bx0 + bx1) / 2, 0, 0.003], [(bx1 - bx0) / 2, 0.035, 0.003], { rgb: [45, 53, 48] });
+    ruler3D(sc, bx0 + 0.005, bx1 - 0.005, -0.035, 0.0062);
+    // supports under the barrel
+    for (const x of [lay.xBreech + 0.01, lay.muzzle - 0.01]) sc.box([x, 0, (zA - RB_OUT) / 2 + 0.003], [0.004, 0.006, (zA - RB_OUT) / 2 - 0.003], { rgb: [60, 70, 66] });
+    // field lines of the coils that carry current, turned around the axis
+    if (!fieldLines) fieldLines = traceFieldLines();
+    const s2 = GG.Lc / 2, a2u = (geo.a2 + 0.0015) / s2;
+    for (let k = 0; k < stages; k++) {
+      const fI = I0 > 0 ? Math.abs(Inow[k] || 0) / Math.max(I0, 1e-9) : 0;
+      if (fI < 0.04) continue;
+      const col = `rgba(179,166,255,${0.5 * fI})`, off = reduceMotion ? 0 : -now / 40;
+      for (const phi of [0, Math.PI / 3, 2 * Math.PI / 3]) for (const sg of [1, -1]) for (const ln of fieldLines) {
+        let run = [];
+        const flush = () => { if (run.length > 1) sc.path(run, col, 1.2, { dash: [3, 4], dashOff: off, chunk: 14 }); run = []; };
+        for (let i = 0; i < ln.length; i += 2) {
+          const [u, v] = ln[i];
+          if (Math.abs(u) < 1 && Math.abs(v) < a2u) { flush(); continue; }
+          run.push([lay.xc[k] + u * s2, sg * v * s2 * Math.cos(phi), zA + sg * v * s2 * Math.sin(phi)]);
+        }
+        flush();
+      }
+    }
+    // barrel: a clear plastic tube
+    sc.cyl([lay.xBreech, 0, zA], [lay.muzzle, 0, zA], RB_OUT, { rgb: [200, 225, 235], a: 0.13, shade: false, open: true, noCull: true }, 16);
+    sc.cyl([lay.xBreech - 0.006, 0, zA], [lay.xBreech, 0, zA], RB_OUT + 0.002, { rgb: [59, 69, 64] }, 16);
+    // coils: copper windings on bobbins
+    for (let k = 0; k < stages; k++) {
+      const xc = lay.xc[k], fI = I0 > 0 ? clamp(Math.abs(Inow[k] || 0) / I0, 0, 1) : 0, dead = burnt[k], T = coilT[k];
+      const hot = clamp((T - 60) / 120, 0, 1);
+      sc.tube([xc - GG.Lc / 2, 0, zA], [xc + GG.Lc / 2, 0, zA], geo.a1, geo.a2, { rgb: dead ? BURNT : COPPER, amb: 0.5, emit: !dead && fI > 0.02 ? '255,140,40' : !dead && hot > 0 ? '255,60,20' : null, emitA: !dead && fI > 0.02 ? 0.55 * fI : 0.5 * hot, noInner: true }, 40);
+      for (let j = 1; j < 6; j++) sc.circle([xc - GG.Lc / 2 + GG.Lc * j / 6, 0, zA], [1, 0, 0], geo.a2 + 0.0003, dead ? 'rgba(10,6,4,0.6)' : 'rgba(90,44,14,0.55)', 1, {}, 28);
+      for (const ex of [xc - GG.Lc / 2 - 0.0015, xc + GG.Lc / 2]) sc.tube([ex, 0, zA], [ex + 0.0015, 0, zA], RB_OUT, geo.a2 + 0.002, { rgb: [32, 38, 42], noInner: true }, 28);
+      if (fI > 0.05 && !dead) sc.glow([xc, 0, zA + geo.a2 + 0.012], 0.012, '255,176,32', 0.9);
+      sc.label([xc, 0, zA + geo.a2 + 0.022], dead ? `coil ${k + 1}: burnt` : `coil ${k + 1}`, { color: dead ? '#ff8a7a' : '#e8c8a8' });
+      if (dead && Math.random() < 0.25 && !reduceMotion) { const q = sc.project([xc, 0, zA + geo.a2]); if (q) fx.puff(q.x, q.y + TOP, 1, { shade: 60 }); }
+      // where this coil switches off
+      const cutC = sh ? sh.r.st[k].cutoff : set.cutoff, xo = xc + clamp(cutC, -1.4, 1.4) * GG.Lc / 2;
+      sc.line([xo, 0, zA + RB_OUT], [xo, 0, zA + geo.a2 + 0.006], 'rgba(255,176,32,0.85)', 1.2, { dash: [3, 3] });
+      sc.sphere([xo, 0, zA + geo.a2 + 0.007], 0.0018, [255, 176, 32], { flat: true });
+      if (k > 0) gate3D(sc, xc - GG.Lc / 2 - GG.lead, sx, Ls, zA, false);
+    }
+    // the slug: a steel or iron cylinder, its ends tinted when it is magnetised
+    const slug = (x, M, Ms) => {
+      const mat = sh ? sh.r.mat : SLUGS[S.material], rgb = CL.hexRGB(mat.color).split(',').map(Number), fM = Ms > 0 ? clamp(Math.abs(M) / Ms, 0, 1) : 0, north = M >= 0;
+      const tint = (c, a) => rgb.map((v, i) => v + (c[i] - v) * a);
+      sc.cyl([x - Ls / 2, 0, zA], [x + Ls / 2, 0, zA], d / 2, { rgb, capRgb: fM > 0.03 ? tint(north ? [62, 126, 230] : [229, 72, 63], 0.7 * fM) : rgb, capRgb2: fM > 0.03 ? tint(north ? [229, 72, 63] : [62, 126, 230], 0.7 * fM) : rgb }, 18);
+      if (sh && sh.fired && t > sh.r.tEnd && (sh.tHit === null || t < sh.tHit)) sc.line([x - Ls / 2 - clamp(sh.v * 0.0009, 0.005, 0.06), 0, zA], [x - Ls / 2, 0, zA], 'rgba(255,220,170,0.5)', Math.max(2, d * 0.6 * (sc.f / sc.dist)), {});
+    };
+    slug(sx, p ? p.M : 0, sh ? sh.r.Ms : 1);
+    // chronograph: two gates and a box with a glowing display
+    const g1 = lay.muzzle + 0.02, g2 = lay.muzzle + 0.07;
+    gate3D(sc, g1, sx, Ls, zA, true); gate3D(sc, g2, sx, Ls, zA, true);
+    chrono3D(sc, g1, g2, zA + RB_OUT + 0.014, sh, t);
+    if (!sh) {
+      sc.label([sx, 0, zA + d / 2 + 0.014], 'iron slug', { color: '#dfe6df' });
+      sc.label([lay.xc[0], -geo.a2, zA - geo.a2 - 0.01], 'copper coil (an electromagnet)', { color: '#dfe6df' });
+      sc.label([(lay.xBreech + lay.xc[0]) / 2, 0, zA - RB_OUT - 0.008], 'plastic barrel', { color: '#c9d2cb' });
+    }
+  }
+  function gate3D(sc, xg, sx, Ls, zA, chrono) {
+    const blocked = sx - Ls / 2 <= xg && sx + Ls / 2 >= xg, y0 = RB_OUT + 0.0015, sz = 0.003;
+    sc.box([xg, 0, zA + y0 + sz / 2], [sz / 2, sz / 2, sz / 2], { rgb: [22, 26, 24] });
+    sc.box([xg, 0, zA - y0 - sz / 2], [sz / 2, sz / 2, sz / 2], { rgb: [22, 26, 24] });
+    if (!blocked) sc.line([xg, 0, zA + y0], [xg, 0, zA - y0], chrono ? 'rgba(255,80,60,0.7)' : 'rgba(255,60,60,0.6)', 1.2);
+    if (blocked) sc.glow([xg, 0, zA + y0 + sz + 0.002], 0.006, '95,211,141', 0.95);
+  }
+  function chrono3D(sc, g1, g2, zb, sh, t) {
+    const w = g2 - g1 + 0.016, hgt = 0.018, dep = 0.02, c = [(g1 + g2) / 2, 0, zb + hgt / 2 + 0.004];
+    for (const gx of [g1, g2]) sc.box([gx, 0, zb + 0.002], [0.0015, 0.0015, 0.002], { rgb: [90, 100, 94] });
+    sc.box(c, [w / 2, dep / 2, hgt / 2], { rgb: [35, 42, 38] });
+    const cr = sh && sh.chrono && t >= sh.chrono.t2 ? (0.05 / (sh.chrono.t2 - sh.chrono.t1)) : null;
+    sc.custom([c[0], -dep / 2 - 0.0005, c[2]], (cx, x, y, k) => {
+      const ww = w * k * 0.92, hh = hgt * k * 0.7; if (ww < 30) return;
+      cx.fillStyle = '#0c0907'; cx.fillRect(x - ww / 2, y - hh / 2, ww, hh);
+      cx.font = `300 ${clamp(hh * 0.75, 9, 28)}px "Barlow Condensed", "Arial Narrow", sans-serif`; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      cx.shadowColor = 'rgba(255,110,20,0.9)'; cx.shadowBlur = 10; cx.fillStyle = '#ffcf9e'; cx.fillText(cr ? pl(cr, 3) + ' m/s' : '- - -', x, y);
+    }, { bias: -0.001 });
+    sc.label([c[0], 0, zb + hgt + 0.012], 'chronograph', { color: '#b9c4bb' });
+  }
+  function balls3D(sc, now, zA) {
+    const sh = shot && shot.kind === 'balls' ? shot : null;
+    const lay = sh ? sh.lay : ballLayout(), r = lay.r, k = sh ? sh.set.behind : S.behind, t = sh ? sh.sim : 0;
+    // aluminium channel: a base and two low walls
+    const tx0 = lay.xBreech, tx1 = lay.muzzle + 0.02, cxm = (tx0 + tx1) / 2, hl = (tx1 - tx0) / 2;
+    sc.box([cxm, 0, 0.004], [hl, r * 1.4, 0.004], { rgb: [150, 158, 164] });
+    for (const sg of [1, -1]) sc.box([cxm, sg * r * 1.25, 0.008 + r * 0.45], [hl, r * 0.15, r * 0.45], { rgb: [176, 184, 190] });
+    ruler3D(sc, tx0 + 0.005, tx1 - 0.005, -r * 1.4 - 0.001, 0.0082);
+    const ball = (x, glow) => { sc.sphere([x, 0, zA], r, STEEL); if (glow) sc.glow([x, 0, zA], r * 2.6, '255,220,160', 0.5 * glow); };
+    const impacted = j => sh && sh.impacts.some(im => im.j === j && t >= im.t);
+    for (let j = 0; j < lay.mags.length; j++) {
+      const xm = lay.mags[j], hit = impacted(j), stuck = sh && sh.stopAt === j;
+      sc.cyl([xm, 0, zA], [xm + 2 * r, 0, zA], r, { rgb: [196, 202, 208], capRgb: [229, 72, 63], capRgb2: [62, 126, 230] }, 18);
+      lay.chain[j].forEach((xb, i) => { if (i === k - 1 && hit && !stuck) return; ball(xb, 0); });
+      if (hit) { const im = sh.impacts.find(q => q.j === j); const age = (t - im.t) / Math.max(1e-4, sh.segs[0].dur * 0.1); ball(xm - r, age < 1 ? 1 - age : 0); }
+      sc.label([xm + r, 0, zA + r + 0.012], `stage ${j + 1}`, { color: '#c9d2cb' });
+    }
+    if (sh) {
+      const p = sh.posAt(t), moving = !(sh.stopAt !== null && p.seg === sh.segs.length - 1 && t >= sh.segs[sh.segs.length - 1].t1), atT = sh.tHit !== null && t >= sh.tHit;
+      if (moving && !atT) ball(p.x, 0);
+    } else ball(lay.xStart, 0);
+    const g1 = lay.muzzle + 0.02, g2 = lay.muzzle + 0.07;
+    for (const gx of [g1, g2]) sc.line([gx, 0, zA + r + 0.003], [gx, 0, zA - r], 'rgba(255,80,60,0.6)', 1.2);
+    chrono3D(sc, g1, g2, zA + r + 0.006, sh, t);
+    if (!sh) {
+      sc.label([lay.xStart, 0, zA + r + 0.014], 'rolling ball', { color: '#dfe6df' });
+      sc.label([lay.mags[0] + r, -r, zA - r - 0.012], 'neodymium magnet (N red, S blue)', { color: '#dfe6df' });
+    }
+  }
+  function target3D(sc, now, zA) {
+    const sh = shot, { lay } = sceneInfo(), xT = lay.xT, type = sh ? sh.tgt.type : S.target, tg = sh ? sh.tgt : null;
+    if (type === 'pendulum') {
+      const pv = [xT + 0.03, 0, zA + PEND_L], th = tg ? tg.th : 0;
+      for (const sg of [1, -1]) sc.box([pv[0], sg * 0.06, (pv[2] + 0.02) / 2], [0.004, 0.004, (pv[2] + 0.02) / 2], { rgb: [58, 66, 61] });
+      sc.box([pv[0], 0, pv[2] + 0.024], [0.004, 0.064, 0.004], { rgb: [58, 66, 61] });
+      const ux = [Math.cos(th), 0, Math.sin(th)], uz = [-Math.sin(th), 0, Math.cos(th)];
+      const bc = [pv[0] + PEND_L * Math.sin(th), 0, pv[2] - PEND_L * Math.cos(th)];
+      for (const sg of [1, -1]) sc.line([pv[0], sg * 0.018, pv[2]], [bc[0] + uz[0] * 0.0225, sg * 0.018, bc[2] + uz[2] * 0.0225], '#c9d1cb', 1.1);
+      sc.box(bc, [0.03, 0.025, 0.0225], { rgb: [190, 146, 96] }, [ux, [0, 1, 0], uz]);
+      // height scale and the pointer that stays at the highest swing
+      const xs = pv[0] + 0.1;
+      sc.box([xs, 0.05, zA + 0.16], [0.002, 0.002, 0.16], { rgb: [80, 90, 84] });
+      for (let i = 0; i <= 30; i += 5) { sc.line([xs, 0.05, zA + i * 0.01], [xs + (i % 10 ? 0.008 : 0.016), 0.05, zA + i * 0.01], 'rgba(230,236,230,0.5)', 1); if (i % 10 === 0) sc.label([xs + 0.03, 0.05, zA + i * 0.01], i + ' cm', { color: 'rgba(230,236,230,0.7)', font: '500 11.5px "Barlow Condensed", "Arial Narrow", sans-serif' }); }
+      if (tg && tg.hitAt !== null) { const hMax = PEND_L * (1 - Math.cos(tg.maxTh)); sc.label([xs, 0.05, zA + hMax], 'h = ' + (hMax * 100).toFixed(hMax < 0.1 ? 1 : 0) + ' cm', { pill: 'rgba(255,176,32,0.95)', fg: '#2b1900', dx: 44 }); }
+      sc.label([pv[0], -0.07, 0.004], `ballistic pendulum, ${Math.round((tg ? tg.M : PEND_M[sh ? sh.kind : S.type]) * 1000)} g block`, { color: '#c9d2cb' });
+    } else if (type === 'cans') {
+      const cans = tg ? tg.cans : makeTarget({ set: { target: 'cans' }, lay, m: 0, v: 0 }).cans;
+      for (const c of cans) {
+        const ax = [-Math.sin(c.a), 0, Math.cos(c.a)], ctr = [c.x, 0, c.y + CAN.h / 2];
+        const p0 = [ctr[0] - ax[0] * CAN.h / 2, 0, ctr[2] - ax[2] * CAN.h / 2], p1 = [ctr[0] + ax[0] * CAN.h / 2, 0, ctr[2] + ax[2] * CAN.h / 2];
+        sc.cyl(p0, p1, CAN.w / 2, { rgb: [214, 60, 48], capRgb: [200, 206, 210] }, 18);
+        sc.circle(ctr, ax, CAN.w / 2 + 0.0005, 'rgba(255,255,255,0.85)', Math.max(1.5, 0.018 * sc.f / sc.dist * 0.6), {}, 24);
+      }
+      sc.label([xT + 0.1, -0.06, 0.004], `${cans.length} empty cans, ${Math.round(CAN.m * 1000)} g each`, { color: '#c9d2cb' });
+    } else {
+      sc.box([xT + 0.07, 0, 0.05], [0.074, 0.074, 0.05], { rgb: [90, 65, 40] });
+      sc.box([xT + 0.07, 0, 0.0505], [0.07, 0.07, 0.05], { rgb: [226, 198, 142] }, null);
+      if (tg && tg.hitAt !== null) sc.custom([xT - 0.0045, 0, zA], (cx, x, y, k) => { cx.fillStyle = '#5c4a2c'; cx.beginPath(); cx.ellipse(x, y, Math.max(2, 0.004 * k), Math.max(2, tg.depth * k * 0.5), 0, 0, TAU); cx.fill(); });
+      sc.label([xT + 0.07, -0.08, 0.004], 'sand box (just stops it)', { color: '#c9d2cb' });
+    }
+    // the slug or ball after it left the barrel
+    if (sh && sh.tHit !== null && sh.sim < sh.tHit) {
+      const p = sh.posAt(sh.sim);
+      if (sh.kind === 'coil' && p.x > lay.muzzle) {
+        const Ls = sh.r.Ls, d = GG.slugD, rgb = CL.hexRGB(sh.r.mat.color).split(',').map(Number);
+        sc.cyl([p.x - Ls / 2, 0, zA], [p.x + Ls / 2, 0, zA], d / 2, { rgb }, 18);
+      }
+    }
+  }
+
   function drawOverview(now) {
     const { kind, lay } = sceneInfo();
     const x0 = lay.xBreech - 0.03, x1 = lay.xT + 0.4, pad = 12, w = W - 2 * pad, km = w / (x1 - x0), y = 26;
@@ -742,7 +931,8 @@
     ctx.clearRect(0, 0, W, H);
     CL.screenBg(ctx, W, H, { grid: 0 });
     const { kind } = sceneInfo();
-    if (kind === 'coil') drawCoilGun(now); else drawBallGun(now);
+    if (v3 && v3.on) draw3D(now);
+    else if (kind === 'coil') drawCoilGun(now); else drawBallGun(now);
     fx.draw(ctx, W, H);
     drawOverview(now);
     if (charging) {
@@ -1179,7 +1369,8 @@
     drawGraphs();
   }
   function init() {
-    cv = $('#ggCanvas'); shake = shaker($('#ggWrap'));
+    cv = $('#ggCanvas');
+    v3 = CL.V3.attach($('#ggWrap'), { home: { yaw: -2.05, pitch: 0.32, dist: 0.5, target: [0, 0, 0], fov: 46, minDist: 0.01 }, storeKey: 'cl-3d-gauss' }); shake = shaker($('#ggWrap'));
     bindControls(); setType(S.type); renderMissions(); updateHeat();
     CL.grip($('#ggGrip'), {
       axis: 'y', get: () => H,

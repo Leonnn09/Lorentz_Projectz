@@ -32,7 +32,7 @@
 
   const S = { part: 'proton', K: 100, I: 0.01, preset: 'therapy' };
   let slabs = [];
-  let tr = null, active = false, cv, ctx, W = 800, H = 300, shake, beamOn = false, beamAcc = 0, ctlK = null, ctlI = null;
+  let tr = null, active = false, cv, ctx, W = 800, H = 300, shake, beamOn = false, beamAcc = 0, ctlK = null, ctlI = null, v3 = null, lastShotT = -1e9;
   let shots = [], floaters = [], lastTableT = 0, totalHits = 0;
   let userH = +CL.store.get('cl-h-tgt', 0) || 0;
   const fx = new FX();
@@ -115,6 +115,7 @@
   function draw(now) {
     const { ctx: c } = fitCanvas(cv, W, H); ctx = c;
     ctx.clearRect(0, 0, W, H);
+    if (v3 && v3.on) { draw3D(now); fx.draw(ctx, W, H); return; }
     CL.screenBg(ctx, W, H, { grid: 40, ticks: false });
     layoutBoxes();
     const cy = H * 0.5, bh = H * 0.56;
@@ -179,11 +180,7 @@
         const gl = ctx.createRadialGradient(px, py + sh.wob * ease, 0, px, py + sh.wob * ease, 10);
         gl.addColorStop(0, hexA(part().color, 1)); gl.addColorStop(1, hexA(part().color, 0));
         ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(px, py + sh.wob * ease, 10, 0, TAU); ctx.fill();
-      } else if (!sh.done) {
-        sh.done = true;
-        if (sh.stopped) { fx.burst(px, py + sh.wob, sh.faint ? 6 : 26, { speed: sh.faint ? 90 : 170, life: 0.5, colors: ['255,220,140', '255,160,60', '255,255,255'] }); if (!sh.faint) { fx.ring(px, py + sh.wob, { speed: 110, life: 0.4, color: '255,210,120' }); audio.spark(); } }
-        if (!sh.faint) depositLabels();
-      }
+      } else if (!sh.done) shotDone(sh, px, py + sh.wob);
     }
     shots = shots.filter(sh => !(sh.done && (now - sh.t0) / 1000 > sh.dur + 1.2));
     // floating deposit labels
@@ -191,18 +188,107 @@
     for (const f of floaters) {
       const a = 1 - (now - f.born) / 1600;
       ctx.globalAlpha = clamp(a * 1.4, 0, 1);
-      pill(ctx, f.text, f.x, f.y - 30 * (1 - a), 'rgba(255,190,90,0.95)', '#231300', '600 12.5px "Barlow Condensed", "Arial Narrow", sans-serif');
+      pill(ctx, f.text, f.xs, f.y - 30 * (1 - a), 'rgba(255,190,90,0.95)', '#231300', '600 12.5px "Barlow Condensed", "Arial Narrow", sans-serif');
       ctx.globalAlpha = 1;
     }
     if (scaleNote) haloText(ctx, 'thin slabs widened (not to scale)', W - 8, H - 12, { font: '500 10.5px "Barlow", "Segoe UI", sans-serif', color: '#93a197', align: 'right' });
     fx.draw(ctx, W, H);
+  }
+  function shotDone(sh, x, y) {
+    sh.done = true;
+    if (sh.stopped) { fx.burst(x, y, sh.faint ? 6 : 26, { speed: sh.faint ? 90 : 170, life: 0.5, colors: ['255,220,140', '255,160,60', '255,255,255'] }); if (!sh.faint) { fx.ring(x, y, { speed: 110, life: 0.4, color: '255,210,120' }); audio.spark(); } }
+    if (!sh.faint) depositLabels();
+  }
+  // where a depth (in screen px of the flat view) appears on screen: flat or 3-D
+  function scrAt(px) {
+    if (v3 && v3.on) { const q = v3.scene.project([X3(px), 0, ZB]); if (q) return [q.x, q.y]; }
+    return [px, H * 0.5];
+  }
+  /* ------------------------------------------------------------------
+     3-D view: the slabs as blocks on a bench, the beam coming out of a pipe,
+     and the energy the beam leaves behind glowing along its path (the
+     brightest glow is the Bragg peak). Thin slabs are widened as in the flat view.
+     ------------------------------------------------------------------ */
+  const ZB = 0.5;                       // beam height above the bench (world units)
+  let K3 = 100;                         // flat-view px per 3-D unit
+  const X3 = px => (px - x0px) / K3;
+  function draw3D(now) {
+    const s = v3.scene;
+    layoutBoxes();
+    K3 = Math.max(1, xEndPx - x0px) / 2.4;
+    const Ls = X3(xEndPx), hz = 0.42, hy = 0.42, P = part(), prgb = hexRGB(P.color);
+    s.begin(ctx, W, H, { target: [Ls / 2 - 0.3, 0, 0.42], dist: 4.4 });
+    s.grid(0, -2.2, Ls + 1.8, -1.6, 1.6, 0.25);
+    s.box([Ls / 2 - 0.2, 0, -0.03], [Ls / 2 + 1.3, 0.62, 0.03], { rgb: [34, 42, 38], layer: 'back' });
+    // beam pipe with a flange
+    s.cyl([-1.7, 0, ZB], [-0.14, 0, ZB], 0.055, { rgb: [150, 162, 156] }, 18);
+    s.cyl([-0.2, 0, ZB], [-0.14, 0, ZB], 0.1, { rgb: [120, 130, 125] }, 18);
+    s.box([-1.1, 0, 0.22], [0.05, 0.08, 0.22], { rgb: [70, 80, 75] });
+    s.label([-1.3, 0, ZB + 0.17], P.symbol + ' beam', { color: P.color, font: '700 13.5px "Barlow Condensed", "Arial Narrow", sans-serif' });
+    if (beamOn) { s.line([-0.14, 0, ZB], [0, 0, ZB], `rgba(${prgb},${0.6 + 0.25 * Math.sin(now / 60)})`, 4, { additive: true }); s.glow([-0.1, 0, ZB], 0.12, prgb, 0.7); }
+    // slabs
+    for (const b of boxes) {
+      const sl = b.s, m = MAT[sl.mat], x0 = X3(b.x0), x1 = X3(b.x1), rgb = hexRGB(m.color).split(',').map(Number);
+      if (sl.destroyed) {                                    // a heap of rubble where the slab was
+        for (let k = 0; k < 7; k++) { const u = ((k * 37) % 10) / 10, v = ((k * 53) % 10) / 10; s.box([x0 + (x1 - x0) * u, (v - 0.5) * 0.6, 0.03 + 0.02 * (k % 3)], [0.03 + 0.02 * (k % 2), 0.04, 0.03], { rgb: [80, 86, 96] }); }
+        s.label([(x0 + x1) / 2, 0, 0.3], m.limitWord === 'melts' ? 'melted' : m.limitWord === 'boils' ? 'boiled' : m.limitWord === 'chars' ? 'burnt' : 'gone', { color: '#ff8a7a' });
+        continue;
+      }
+      const f = clamp((sl.T - T_ROOM) / Math.max(m.limit - T_ROOM, 1), 0, 1);
+      s.box([(x0 + x1) / 2, 0, ZB], [Math.max(0.004, (x1 - x0) / 2 - 0.006), hy, hz], { rgb, a: 0.5, noCull: true, stroke: 'rgba(255,255,255,0.22)', emit: f > 0.05 ? '255,90,30' : null, emitA: f * 0.9 });
+      if (f > 0.05) s.glow([(x0 + x1) / 2, 0, ZB], 0.3 + 0.4 * f, '255,110,40', 0.25 + 0.5 * f);
+      const dmg = damage(sl);
+      if (dmg > 0.45) for (let k = 0; k < 3; k++) { const xx = x0 + (x1 - x0) * (0.25 + 0.25 * k); s.path([[xx, -hy - 0.002, ZB + hz], [xx + 0.03, -hy - 0.002, ZB + hz * 0.4], [xx - 0.02, -hy - 0.002, ZB], [xx + 0.02, -hy - 0.002, ZB - hz * 0.5 * dmg]], `rgba(20,10,10,${0.3 + 0.6 * dmg})`, 1.4); }
+      s.label([(x0 + x1) / 2, 0, ZB + hz + 0.1], m.short, { color: '#dfe6de' });
+      s.label([(x0 + x1) / 2, 0, ZB + hz + 0.22], len(sl.thick), { color: '#a9b3ab', font: '500 12px "Barlow Condensed", "Arial Narrow", sans-serif' });
+      if (sl.T > T_ROOM + 1) s.label([(x0 + x1) / 2, -hy, ZB - hz - 0.1], pl(sl.T, 3) + ' °C', { color: '#ffb547' });
+    }
+    // the energy left behind along the path: brightest at the Bragg peak
+    const age = (performance.now() - lastShotT) / 1000, show = beamOn ? 1 : clamp(1.6 - age / 2.5, 0, 1);
+    if (tr && tr.prof.length && show > 0) {
+      const Smax = Math.max(...tr.prof.map(q => q.S)) || 1, step = Math.max(1, Math.floor(tr.prof.length / 220)), core = [];
+      for (let i = 0; i < tr.prof.length; i += step) {
+        const q = tr.prof[i], fS = q.S / Smax, x = X3(physToPx(q.x));
+        s.glow([x, 0, ZB], 0.022 + 0.075 * fS, '255,166,60', show * (0.07 + 0.42 * fS * fS), { layer: 'front' });
+        core.push([x, 0, ZB]);
+      }
+      if (core.length > 1) s.path(core, `rgba(255,214,150,${0.55 * show})`, 1.6, { layer: 'front', chunk: 400 });
+    }
+    // where the beam stops, or where it leaves
+    if (tr) {
+      if (tr.stopX != null) {
+        const xs = X3(physToPx(tr.stopX));
+        s.path([[xs, -hy - 0.05, ZB - hz - 0.05], [xs, hy + 0.05, ZB - hz - 0.05], [xs, hy + 0.05, ZB + hz + 0.05], [xs, -hy - 0.05, ZB + hz + 0.05], [xs, -hy - 0.05, ZB - hz - 0.05]], 'rgba(255,212,59,0.75)', 1.4, { dash: [5, 4] });
+        s.label([xs, -hy - 0.05, ZB - hz - 0.05], 'stops at ' + len(tr.stopX), { pill: 'rgba(255,212,59,0.95)', fg: '#1f1600', dy: 14 });
+      } else s.label([Ls + 0.5, 0, ZB + 0.15], 'exits with ' + mev(tr.Texit) + ' →', { color: '#ffd43b' });
+    }
+    // particles in flight
+    for (const sh of shots) {
+      const a = (now - sh.t0) / 1000; if (a < 0) continue;
+      const u = clamp(a / sh.dur, 0, 1), ease = 1 - (1 - u) * (1 - u);
+      const x = X3(physToPx(sh.end * ease)), y = sh.dy / K3 * 1.4, z = ZB + sh.wob / K3 * ease;
+      s.line([-0.14, y * 0.2, ZB], [x, y, z], `rgba(${prgb},${sh.faint ? 0.35 : 0.85})`, sh.faint ? 1.2 : 2, { layer: 'front' });
+      if (u < 1) s.glow([x, y, z], 0.08, prgb, 0.95, { layer: 'front' });
+      else if (!sh.done) { const q = s.project([x, y, z]); if (q) shotDone(sh, q.x, q.y); else sh.done = true; }
+    }
+    s.end();
+    for (const fl of floaters) {                 // deposit labels float up from the slabs
+      const a = 1 - (now - fl.born) / 1600; if (a <= 0) continue;
+      const q = s.project([X3(fl.x), 0, ZB + hz]); if (!q) continue;
+      ctx.globalAlpha = clamp(a * 1.4, 0, 1);
+      pill(ctx, fl.text, q.x, q.y - 34 - 30 * (1 - a) - 18 * (fl.i % 2), 'rgba(255,190,90,0.95)', '#231300', '600 12.5px "Barlow Condensed", "Arial Narrow", sans-serif');
+      ctx.globalAlpha = 1;
+    }
+    floaters = floaters.filter(fl => now - fl.born < 1600);
+    shots = shots.filter(sh => !(sh.done && (now - sh.t0) / 1000 > sh.dur + 1.2));
+    if (scaleNote) haloText(ctx, 'thin slabs widened (not to scale)', W - 8, H - 12, { font: '500 10.5px "Barlow", "Segoe UI", sans-serif', color: '#93a197', align: 'right' });
   }
   function depositLabels() {
     const cy = H * 0.5, bh = H * 0.56;
     tr.per.forEach((p, i) => {
       if (p.dE <= 0 || slabs[i].destroyed) return;
       const b = boxes[i];
-      floaters.push({ text: '+' + mev(p.dE), x: clamp((b.x0 + b.x1) / 2, 50, W - 50), y: cy - bh / 2 + 18 + (i % 2) * 18, born: performance.now() });
+      floaters.push({ text: '+' + mev(p.dE), x: (b.x0 + b.x1) / 2, xs: clamp((b.x0 + b.x1) / 2, 50, W - 50), y: cy - bh / 2 + 18 + (i % 2) * 18, i, born: performance.now() });
     });
   }
   const damage = s => s.destroyed ? 1 : clamp((s.T - T_ROOM) / Math.max(MAT[s.mat].limit - T_ROOM, 1), 0, 1);
@@ -247,6 +333,7 @@
   function fireOne(delay = 0, faint = false) {
     audio.unlock();
     const end = tr.stopX != null ? tr.stopX : (tr.per.length ? tr.per[tr.per.length - 1].xout : 0) + 30;
+    lastShotT = performance.now() + delay;
     shots.push({ t0: performance.now() + delay, dur: faint ? 0.45 : 0.85, end, stopped: tr.stopX != null, dy: faint ? (Math.random() - 0.5) * 12 : (Math.random() - 0.5) * 4, wob: (Math.random() - 0.5) * (PHYS.isLight(part()) ? 22 : 4), faint, done: false });
     if (!faint) {
       for (let i = 0; i < slabs.length; i++) { const p = tr.per[i]; if (p.dE > 0 && !slabs[i].destroyed) { slabs[i].hits++; slabs[i].E += p.dE * C.MeV; } }
@@ -274,7 +361,7 @@
     const s = slabs[i], m = MAT[s.mat];
     s.destroyed = true; s.T = m.limit;
     const b = boxes[i] || { x0: W / 2, x1: W / 2 };
-    const x = (b.x0 + b.x1) / 2, y = H * 0.5;
+    const [x, y] = scrAt((b.x0 + b.x1) / 2);
     fx.flash(0.6, '255,200,150');
     fx.burst(x, y, 140, { speed: 420, life: 1.2, colors: ['255,240,200', '255,170,70', '255,90,50', hexRGB(m.color)] });
     fx.burst(x, y, 40, { speed: 260, life: 1.8, colors: [hexRGB(m.color), '90,90,100'], debris: true, gravity: 260, size: 3 });
@@ -311,7 +398,7 @@
     if (beamOn) {
       beamAcc += dt;
       while (beamAcc > 0.06) { beamAcc -= 0.06; fireOne(0, true); }
-      if (tr.stopX != null && Math.random() < dt * 20) { const sx = physToPx(tr.stopX); fx.burst(sx, H * 0.5, 3, { speed: 120, life: 0.4, colors: ['255,220,140', '255,140,60'] }); }
+      if (tr.stopX != null && Math.random() < dt * 20) { const [sx, sy] = scrAt(physToPx(tr.stopX)); fx.burst(sx, sy, 3, { speed: 120, life: 0.4, colors: ['255,220,140', '255,140,60'] }); }
     }
     heat(dt);
     fx.update(dt); shake.update(now);
@@ -378,6 +465,7 @@
   }
   function init() {
     cv = $('#tgtCanvas'); shake = shaker($('#tgtWrap'));
+    v3 = CL.V3.attach($('#tgtWrap'), { home: { yaw: -1.2, pitch: 0.42, dist: 4.4, target: [1.2, 0, 0.45], fov: 44 }, storeKey: 'cl-3d-tgt' });
     bindControls(); loadPreset('therapy'); renderMissions();
     CL.grip($('#tgtGrip'), {
       axis: 'y', get: () => H,

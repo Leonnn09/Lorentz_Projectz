@@ -120,7 +120,7 @@
   let wallFx = false, extFx = false, targetFx = false, hotSpot = null, floaters = [];
   let replay = null, fail = null, stress = 0, alarmOn = false, chaosFlip = 1;
   let stats = { flips: 0, nudges: 0, changes: 0 };
-  let active = false, started = false;
+  let active = false, started = false, v3 = null, lid = 0;
   const view = { size: 600, dpr: 1, zoom: 1, panX: 0, panY: 0, base: 1, autoZoom: false };
   let viewCv, viewCtx, staticCv, staticCtx, trailCv, trailCtx;
   let staticDirty = true, trailDirty = true, trailDrawn = 0, staticSign = 0, staticMag = 0;
@@ -937,6 +937,7 @@
   }
   function setRide(on) {
     pov.on = !!on && !!run;
+    if (pov.on && v3 && v3.on) v3.set(false, true);
     $('#stageWrap').classList.toggle('is-pov', pov.on);
     $('#screen-lab .lab').classList.toggle('is-riding', pov.on);
     layout(); requestAnimationFrame(() => { if (active) layout(); });
@@ -958,10 +959,109 @@
   }
 
   /* ------------------------------------------------------------------
+     3-D view of the whole machine: the iron yoke, the stacked copper coils
+     (as many as you set), the pole gap, the vacuum chamber, the two dees
+     and the spiral. The top pole and its coils are lifted off so you can see
+     inside. Everything is drawn to scale with the dee radius R and gap g.
+     The scene is split at the mid-plane: what is below, the beam, then what
+     is above, so the spiral is always drawn between the two halves.
+     ------------------------------------------------------------------ */
+  function draw3D(dt, now) {
+    const st = stateAt(playT), g = povGeom(), R = g.R, gap = S.gapCm / 100;
+    const ctx = viewCtx, W = view.size, H = view.size, sc = v3.scene;
+    ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
+    sc.begin(ctx, W, H, { target: [0, 0, R * 0.35], dist: R * 6.4 });
+    const above = sc.eye[2] >= 0;
+    sc.order = above ? ['lo', 'mid', 'hi'] : ['hi', 'mid', 'lo'];
+    lid = Math.min(1, lid + dt / 1.6);
+    const lift = R * 1.75 * (reduceMotion ? 1 : 1 - Math.pow(1 - clamp(lid * 1.4 - 0.4, 0, 1), 3));
+    const hp = 0.3 * R, tp = 0.2 * R, Rpole = 1.08 * R, ci = 1.13 * R, co = 1.34 * R;
+    const z1 = gap / 2, zTop = z1 + hp;                       // pole face, top of the pole
+    const IRON = [62, 70, 68], COP = [201, 128, 63];
+    const grp = z => z >= 0 ? 'hi' : 'lo';
+    // a vertical slab from z0 to z1 that may cross the mid-plane: drawn as two halves
+    const vbox = (c, hx, hy, za, zb, st2) => {
+      if (za < 0 && zb > 0) { vbox(c, hx, hy, za, 0, st2); vbox(c, hx, hy, 0, zb, st2); return; }
+      sc.box([c[0], c[1], (za + zb) / 2], [hx, hy, (zb - za) / 2], { ...st2, group: grp((za + zb) / 2) });
+    };
+    // ---- bottom half of the magnet (and the yoke's side legs)
+    const plateX = 1.78 * R, plateY = 1.38 * R;
+    vbox([0, 0, 0], plateX, plateY, -zTop - tp, -zTop, { rgb: IRON });
+    for (const sg of [1, -1]) vbox([sg * 1.6 * R, 0, 0], 0.18 * R, 0.85 * R, -zTop, zTop, { rgb: IRON });
+    sc.cyl([0, 0, -zTop], [0, 0, -z1], Rpole, { rgb: [104, 114, 109], group: 'lo' }, 40);
+    const nTop = Math.ceil(S.coils / 2), nBot = Math.floor(S.coils / 2), span = hp - 0.04 * R, gc = 0.015 * R;
+    const nl = clamp(Math.round(S.turns / 100), 1, 10);
+    const coil = (za, zb, group) => {
+      sc.tube([0, 0, za], [0, 0, zb], ci, co, { rgb: COP, amb: 0.5, group }, 64);
+      for (let j = 1; j <= nl; j++) { const z = za + (zb - za) * j / (nl + 1); sc.circle([0, 0, z], [0, 0, 1], co + 0.002 * R, 'rgba(90,44,14,0.6)', 1, { group }, 40); }
+    };
+    const stack = (n, sgn, off) => {
+      if (!n) return;
+      const hc = (span - (n - 1) * gc) / n;
+      for (let i = 0; i < n; i++) { const a = z1 + 0.02 * R + i * (hc + gc), b = a + hc; if (sgn > 0) coil(a + off, b + off, 'hi'); else coil(-b, -a, 'lo'); }
+    };
+    stack(nBot, -1, 0);
+    // ---- top half, lifted off
+    vbox([0, 0, 0], plateX, plateY, zTop + lift, zTop + tp + lift, { rgb: IRON, a: 0.88, noCull: false });
+    sc.cyl([0, 0, z1 + lift], [0, 0, zTop + lift], Rpole, { rgb: [104, 114, 109], group: 'hi' }, 40);
+    stack(nTop, 1, lift);
+    if (lift > 0.05 * R) for (const [x, y] of [[1.6 * R, 0.6 * R], [-1.6 * R, -0.6 * R], [1.6 * R, -0.6 * R], [-1.6 * R, 0.6 * R]]) sc.line([x, y, zTop], [x, y, zTop + lift], 'rgba(200,215,205,0.35)', 1, { dash: [4, 4], group: 'hi' });
+    // ---- vacuum chamber wall (glassy steel) and the field between the poles
+    const N = 48, Rc = g.Rch;
+    for (let i = 0; i < N; i++) {
+      const a0 = TAU * i / N, a1 = TAU * (i + 1) / N, am = (a0 + a1) / 2, out = [Math.cos(am), Math.sin(am), 0];
+      for (const [za, zb] of [[-z1 * 0.92, 0], [0, z1 * 0.92]]) sc.poly([[Rc * Math.cos(a0), Rc * Math.sin(a0), za], [Rc * Math.cos(a1), Rc * Math.sin(a1), za], [Rc * Math.cos(a1), Rc * Math.sin(a1), zb], [Rc * Math.cos(a0), Rc * Math.sin(a0), zb]], { rgb: [150, 170, 160], a: 0.16, out, group: grp((za + zb) / 2) });
+    }
+    const Bz = D.Bz, fa = clamp(0.25 + 0.15 * D.Bmag, 0.25, 0.6);
+    if (Math.abs(Bz) > 1e-9) for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) {
+      const x = i * R * 0.27, y = j * R * 0.27; if (Math.hypot(x, y) > R * 0.95) continue;
+      const zA = Bz < 0 ? z1 : -z1, zB = -zA;
+      sc.line([x, y, zA], [x, y, 0], `rgba(179,166,255,${fa})`, 1.2, { group: grp(zA) });
+      sc.line([x, y, 0], [x, y, zB], `rgba(179,166,255,${fa})`, 1.2, { group: grp(zB) });
+      const hz = zB * 0.55, d = Math.abs(zB - hz) * 0.9;
+      sc.line([x, y, zB], [x + d * 0.5, y, hz], `rgba(179,166,255,${fa})`, 1.2, { group: grp(zB) });
+      sc.line([x, y, zB], [x - d * 0.5, y, hz], `rgba(179,166,255,${fa})`, 1.2, { group: grp(zB) });
+    }
+    // ---- the dees: hollow copper D's, tinted by the RF voltage (red +, blue −)
+    const ph = rfPhase(playT), pol = Math.sign(D.q || 1) * Math.cos(ph), h = g.h, wg = g.wg / 2, th = Math.acos(clamp(wg / R, 0, 1));
+    for (const sgn of [1, -1]) {
+      const shape = [];
+      for (let k = 0; k <= 32; k++) { const a = -th + 2 * th * k / 32; shape.push([sgn * R * Math.cos(a), R * Math.sin(a)]); }
+      const plus = (sgn < 0) === (pol > 0), tint = Math.abs(pol);
+      const emit = plus ? '229,72,63' : '62,126,230';
+      for (const [za, zb] of [[-h, 0], [0, h]]) sc.prism(shape, za, zb, { rgb: COP, a: 0.34, noCull: true, stroke: 'rgba(240,180,120,0.35)', emit, emitA: 0.35 * tint, noTop: za < 0, noBottom: zb > 0, group: grp((za + zb) / 2), topA: 0.22 });
+    }
+    // ---- the spiral and the particle, in the mid-plane
+    const cur = povTrail(st), all = pov.trail.concat(cur);
+    let run0 = [], col0 = null;
+    const flush = () => { if (run0.length > 1) sc.path(run0, col0, 2, { group: 'mid', chunk: 400 }); };
+    for (const p of all) { if (p.c !== col0) { if (run0.length) { const last = run0[run0.length - 1]; flush(); run0 = [last]; } else run0 = []; col0 = p.c; } run0.push([p.x, p.y, 0]); }
+    flush();
+    if (run.extract && playT >= run.extract.t) {
+      const ex = run.extract;
+      sc.cyl([ex.x, ex.y, 0], [ex.x + ex.ux * 0.7 * R, ex.y + ex.uy * 0.7 * R, 0], 0.03 * R, { rgb: [170, 186, 178], a: 0.3, noCull: true, open: true, shade: false, group: 'mid' }, 14);
+    }
+    sc.glow([st.x, st.y, 0], 0.09 * R, '255,200,120', 0.95, { group: 'mid' });
+    sc.sphere([st.x, st.y, 0], 0.012 * R, [255, 255, 255], { flat: true, group: 'mid' });
+    // ---- labels
+    const L = (p, t2, c = '#dfe6df') => sc.label(p, t2, { color: c, font: '600 12.5px "Barlow Condensed", "Arial Narrow", sans-serif' });
+    L([plateX * 0.75, -plateY, zTop + tp + lift + 0.04 * R], 'iron yoke (top pole lifted off)');
+    L([co * Math.cos(-0.9), co * Math.sin(-0.9), -z1 - hp * 0.5], `copper coils: ${S.coils} × ${S.turns} turns`, '#e8c8a8');
+    L([-R * 0.55, R * 0.45, h + 0.03 * R], 'dee', '#f0c090'); L([R * 0.55, -R * 0.45, h + 0.03 * R], 'dee', '#f0c090');
+    const gx = -1.24 * R, gy = -0.6 * R;
+    sc.line([gx, gy, -z1], [gx, gy, z1], 'rgba(255,212,59,0.85)', 1.4, { group: 'hi' });
+    for (const z of [-z1, z1]) sc.line([gx - 0.03 * R, gy, z], [gx + 0.03 * R, gy, z], 'rgba(255,212,59,0.85)', 1.4, { group: grp(z) });
+    L([gx - 0.05 * R, gy, 0], `pole gap g = ${pl(S.gapCm, 3)} cm`, '#ffd43b');
+    sc.end();
+    haloText(ctx, `B = ${pl(D.Bmag, 3)} T, ${D.Bz < 0 ? 'down' : 'up'} through the gap · dee radius R = ${pl(S.R * 100, 3)} cm`, 12, H - 14, { font: '600 12.5px "Barlow Condensed", "Arial Narrow", sans-serif', color: '#b9adff', align: 'left' });
+    return st;
+  }
+  /* ------------------------------------------------------------------
      Frame
      ------------------------------------------------------------------ */
   function drawFrame(dt, now) {
     if (pov.on) return drawPOV(dt, now);
+    if (v3 && v3.on) return draw3D(dt, now);
     if (live && run.status === 'running') {
       const Bc = fieldCommanded();
       if (Math.sign(Bc) !== staticSign || Math.abs(Math.abs(Bc) - staticMag) > 0.08 * Math.max(staticMag, 1e-6)) staticDirty = true;
@@ -2621,7 +2721,7 @@
     viewCv.addEventListener('pointerleave', () => { probePos = null; $('#probe').hidden = true; if (rimHover && !rim) { rimHover = false; viewCv.classList.remove('is-rim'); } });
   }
   // drag the edge of the dees to change the dee radius R
-  function rimHit(sx, sy) { if (tools.tape || fail || pov.on) return false; const d = Math.hypot(sx - X(0), sy - Y(0)); return Math.abs(d - S.R * sc()) < 12; }
+  function rimHit(sx, sy) { if (tools.tape || fail || pov.on || (v3 && v3.on)) return false; const d = Math.hypot(sx - X(0), sy - Y(0)); return Math.abs(d - S.R * sc()) < 12; }
   function rimBadge(final) {
     const p = PHYS.predictions(D.P);
     CL.sizeBadge($('#stageWrap'), `R = ${len(S.R, 3)}`, `top energy ${en(p.Kmax, 3)}${final ? '' : ', release to keep'}`, final ? 1600 : 0);
@@ -2728,6 +2828,8 @@
     $('#zoomOut').addEventListener('click', () => zoomAt(view.zoom / 2));
     $('#zoomFit').addEventListener('click', () => zoomAt(1));
     bindPointer();
+    v3 = CL.V3.attach($('#stageWrap'), { home: { yaw: -1.05, pitch: 0.7, dist: 1, target: [0, 0, 0], fov: 44, minDist: 0.01 }, storeKey: 'cl-3d-lab',
+      onToggle: on => { if (on) { lid = 0; if (pov.on) setRide(false); } else { staticDirty = trailDirty = true; } uiDirty = true; } });
     // drag the corner of the view, or the divider next to it, to resize the machine view
     const resizer = axis => ({
       axis,
@@ -2832,7 +2934,7 @@
     for (const G of graphs) drawGraph(G, st);
     if (replay) setText('lbEnergy', `K = ${en(st.K, 4)} · v = ${e(st.v, 3)} m/s (${pct(st.v / C.c, 3)} of c) · F = ${e(D.absq * st.v * st.B, 3)} N`);
     updateStopwatch();
-    if (tools.probe && probePos && !pov.on) updateProbe();
+    if (tools.probe && probePos && !pov.on && !(v3 && v3.on)) updateProbe();
     if (uiDirty || now - lastUI > 110) {
       updateLive(st); renderData(st); lastUI = now; uiDirty = false;
       if (!endShown && runEnded() && !fail) onRunEnd();

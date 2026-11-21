@@ -24,7 +24,7 @@
   missions.add({ id: 'coll-bounce', screen: 'collide', title: 'Too gentle', goal: 'Make two nuclei bounce off each other without touching: the energy must be below their Coulomb barrier.' });
   missions.add({ id: 'coll-antimatter', screen: 'collide', title: 'Antimatter from energy', goal: 'Create an antiproton in a collision of ordinary matter. (You need a lot of energy, and some luck.)' });
 
-  let active = false, cv, ctx, W = 600, H = 500, shake, ev = null, ctlA = null, ctlB = null;
+  let active = false, cv, ctx, W = 600, H = 500, shake, ev = null, ctlA = null, ctlB = null, v3 = null;
   let userH = +CL.store.get('cl-h-coll', 0) || 0;
   const fx = new FX();
   const VIS = { Tc: 1.0, Tp: 2.2 };          // visual seconds: approach, products
@@ -72,6 +72,7 @@
   function draw(now) {
     const { ctx: c } = fitCanvas(cv, W, H); ctx = c;
     ctx.clearRect(0, 0, W, H);
+    if (v3 && v3.on) { draw3D(now); fx.draw(ctx, W, H); return; }
     CL.screenBg(ctx, W, H, { grid: 0 });
     const cam = ev ? ev.cam : 1;
     const Rpx = Math.min(W, H) * 0.42 * cam, cx = W / 2, cy = H / 2;
@@ -120,6 +121,121 @@
       }
     }
     fx.draw(ctx, W, H);
+  }
+  /* ------------------------------------------------------------------
+     3-D view: the detector as a cut-away barrel, like a real event display.
+     Tracks lie in the horizontal plane z = 0; the field points straight down
+     (into the screen in the flat view, which is the view from above).
+     ------------------------------------------------------------------ */
+  const LAYERS = [0.2, 0.4, 0.6, 0.8, 1.0];
+  function draw3D(now) {
+    const s = v3.scene, cam = ev ? ev.cam : 1, t = now / 1000;
+    s.begin(ctx, W, H, { dist: 3.9 / cam });
+    const cut = s.yawNow, open = a => { const d = Math.atan2(Math.sin(a - cut), Math.cos(a - cut)); return Math.abs(d) < 0.95; };
+    s.grid(-0.9, -3.2, 3.2, -3.2, 3.2, 0.4);
+    // support cradle
+    for (const x of [-0.9, 0.9]) s.box([x, 0, -0.78], [0.12, 1.25, 0.12], { rgb: [44, 52, 48], layer: 'back' });
+    // iron return yoke (an octagon), magnet coil and calorimeter: cut open towards you
+    const N = 32;
+    const P = (r, ang, z) => [r * Math.cos(ang), r * Math.sin(ang), z];
+    const ringWall = (r0, r1, h, rgb, a, emit) => {
+      const cull = a >= 1, gone = i => open(TAU * (i + 0.5) / N);
+      for (let i = 0; i < N; i++) {
+        const a0 = TAU * i / N, a1 = TAU * (i + 1) / N, am = (a0 + a1) / 2;
+        if (gone(i)) continue;
+        s.poly([P(r1, a0, -h), P(r1, a1, -h), P(r1, a1, h), P(r1, a0, h)], { rgb, a, out: [Math.cos(am), Math.sin(am), 0], cull });
+        s.poly([P(r0, a0, -h), P(r0, a0, h), P(r0, a1, h), P(r0, a1, -h)], { rgb, a: a * 0.8, out: [-Math.cos(am), -Math.sin(am), 0], cull });
+        s.poly([P(r0, a0, h), P(r1, a0, h), P(r1, a1, h), P(r0, a1, h)], { rgb, a, out: [0, 0, 1], emit, cull });
+        s.poly([P(r0, a0, -h), P(r0, a1, -h), P(r1, a1, -h), P(r1, a0, -h)], { rgb, a, out: [0, 0, -1], cull });
+        // the cut faces where the opening starts and ends
+        if (gone((i + 1) % N)) s.poly([P(r0, a1, -h), P(r1, a1, -h), P(r1, a1, h), P(r0, a1, h)], { rgb: rgb.map(c => c * 1.2), a });
+        if (gone((i + N - 1) % N)) s.poly([P(r0, a0, -h), P(r1, a0, -h), P(r1, a0, h), P(r0, a0, h)], { rgb: rgb.map(c => c * 1.2), a });
+      }
+    };
+    ringWall(1.3, 1.46, 0.62, [58, 66, 62], 1);
+    ringWall(1.18, 1.25, 0.56, [176, 98, 46], 1, S.B > 0 ? '255,120,40' : null);
+    ringWall(1.02, 1.14, 0.5, [120, 96, 58], 0.55);
+    // tracker layers: thin glassy cylinders
+    for (const r of LAYERS) {
+      s.circle([0, 0, 0.42], [0, 0, 1], r, 'rgba(200,225,208,0.22)', 1, {}, 64);
+      s.circle([0, 0, -0.42], [0, 0, 1], r, 'rgba(200,225,208,0.14)', 1, {}, 64);
+      s.circle([0, 0, 0], [0, 0, 1], r, 'rgba(200,225,208,0.1)', 1, {}, 64);
+      for (let i = 0; i < 12; i++) { const a = TAU * i / 12; s.line([r * Math.cos(a), r * Math.sin(a), -0.42], [r * Math.cos(a), r * Math.sin(a), 0.42], 'rgba(200,225,208,0.07)', 1); }
+    }
+    // the plane the particles fly in, faintly lit
+    s.poly(Array.from({ length: 48 }, (_, i) => P(1.0, TAU * i / 48, 0)), { rgb: [40, 70, 58], a: 0.18, shade: false, bias: 1e3 });
+    // beam pipe along x
+    s.cyl([-3.2, 0, 0], [3.2, 0, 0], 0.035, { rgb: [190, 210, 200], a: 0.14, shade: false, open: true, noCull: true }, 14);
+    s.line([-3.2, 0, 0.035], [3.2, 0, 0.035], 'rgba(215,228,218,0.35)', 1);
+    // the field: straight down through the tracker
+    if (S.B > 0) {
+      const fa = clamp(0.2 + 0.12 * S.B, 0.2, 0.55);
+      for (let i = 0; i < 8; i++) {
+        const a = TAU * (i + 0.5) / 8, r = 0.5 + 0.38 * (i % 2);
+        s.arrow([r * Math.cos(a), r * Math.sin(a), 0.4], [r * Math.cos(a), r * Math.sin(a), -0.36], `rgba(179,166,255,${fa})`, 1.4, 0.12);
+      }
+      s.label([0.88 * Math.cos(TAU * 1.5 / 8), 0.88 * Math.sin(TAU * 1.5 / 8), 0.5], `B = ${pl(S.B, 3)} T, pointing down`, { color: '#b9adff', font: '600 12.5px "Barlow Condensed", "Arial Narrow", sans-serif' });
+    }
+    if (!ev) {
+      s.label([-2.3, 0, 0.16], 'beam A →', { color: '#4dc3ff' });
+      s.label([2.3, 0, 0.16], '← beam B', { color: '#ff6a9a' });
+      const lab = (p, txt) => s.label(p, txt, { color: '#c9d4cc', font: '600 12.5px "Barlow Condensed", "Arial Narrow", sans-serif' });
+      lab([0, -0.6, 0.5], 'tracker (5 layers)'); lab([1.08 * Math.cos(cut + 1.3), 1.08 * Math.sin(cut + 1.3), 0.62], 'calorimeter');
+      lab([1.22 * Math.cos(cut - 1.3), 1.22 * Math.sin(cut - 1.3), 0.7], 'magnet coil'); lab([1.4 * Math.cos(cut + 2.2), 1.4 * Math.sin(cut + 2.2), 0.78], 'iron yoke');
+    }
+    if (ev) {
+      const res = ev.res, tau = ev.tau, Tc = VIS.Tc;
+      const bA = res.v1, bB = res.v2, bmax = Math.max(bA, bB, 1e-9), dist = 2.8;
+      const bounce = res.outcome === 'bounce';
+      if (tau < Tc) {
+        const f = 1 - tau / Tc;
+        let xa = -dist * (bA / bmax) * f, xb = dist * (bB / bmax) * f;
+        if (bounce) { xa = Math.min(xa, -0.05); xb = Math.max(xb, 0.05); }
+        beam3D(s, xa, HEP[S.a], -1, bA); beam3D(s, xb, HEP[S.b], 1, bB);
+      } else {
+        const tp = tau - Tc;
+        for (const tk of ev.tracks) track3D(s, tk, tp);
+        if (bounce && res.rmin) s.label([0, 0, 0.28], `closest approach ${pl(res.rmin, 3)} fm: they never touched`, { color: '#ff9ccf' });
+        // the flash of the collision, a shell of light spreading out
+        const age = tp;
+        if (age < 0.9 && res.outcome !== 'bounce') {
+          const big = clamp(Math.log10(1 + Math.max(res.Q, 0)) / 3.4, 0.15, 1);
+          s.glow([0, 0, 0], 0.15 + 2.2 * age, res.outcome === 'annihilate' ? '200,230,255' : '255,200,140', (1 - age / 0.9) * (0.35 + 0.5 * big), { core: true });
+        }
+      }
+    }
+    s.end();
+    haloText(ctx, '3D view: drag to turn it', 12, H - 14, { font: '600 12.5px "Barlow Condensed", "Arial Narrow", sans-serif', color: '#93a197', align: 'left' });
+  }
+  function beam3D(s, x, P, side, beta) {
+    const rgb = hexRGB(P.color), len = 0.25 + 0.6 * beta;
+    s.line([x + side * len, 0, 0], [x, 0, 0], `rgba(${rgb},0.85)`, 4, { additive: true });
+    s.glow([x, 0, 0], 0.16, rgb, 0.95);
+    s.sphere([x, 0, 0], 0.03, [255, 255, 255], { flat: true });
+    if (S.labels) s.label([x, 0, 0.16], P.sym, { color: P.color, font: '700 14.5px "Barlow Condensed", "Arial Narrow", sans-serif' });
+  }
+  function track3D(s, tk, tp) {
+    const L = trackLen(tk), sNow = Math.min(L, tp * 0.75 * Math.max(tk.beta, 0.05));
+    if (sNow <= 0) return;
+    const n = Math.max(6, Math.ceil(sNow / 0.012)), pts = [];
+    for (let i = 0; i <= n; i++) { const p = trackPos(tk, sNow * i / n); pts.push([p.x, p.y, 0]); }
+    const rgb = hexRGB(tk.color);
+    if (tk.neutral) s.path(pts, `rgba(${rgb},0.85)`, tk.photon ? 2 : 1.6, { dash: tk.photon ? [7, 5] : [3, 5] });
+    else { s.path(pts, `rgba(${rgb},0.3)`, 9, { additive: true, chunk: 60 }); s.path(pts, tk.color, 3, { chunk: 8 }); }
+    if (!tk.neutral) for (const R of LAYERS) {                   // hits on the tracker layers
+      for (let i = 0; i < n; i++) {
+        const r0 = Math.hypot(pts[i][0], pts[i][1]), r1 = Math.hypot(pts[i + 1][0], pts[i + 1][1]);
+        if ((r0 - R) * (r1 - R) <= 0) { s.glow(pts[i + 1], 0.045, rgb, 0.9); s.sphere(pts[i + 1], 0.012, tk.color, { flat: true }); }
+      }
+    }
+    const pe = pts[pts.length - 1];
+    if (sNow >= L - 1e-6 && (tk.neutral || Math.hypot(pe[0], pe[1]) > 0.97)) {   // a tower in the calorimeter
+      const h = clamp(0.08 + 0.1 * Math.log10(1 + tk.pr.E), 0.06, 0.46), ang = Math.atan2(pe[1], pe[0]);
+      const ur = [Math.cos(ang), Math.sin(ang), 0], ut = [-Math.sin(ang), Math.cos(ang), 0];
+      s.box([1.03 * ur[0] + ur[0] * h / 2, 1.03 * ur[1] + ur[1] * h / 2, 0], [h / 2, 0.045, 0.07], { rgb: CL.hexRGB(tk.color).split(',').map(Number), emit: rgb, emitA: 0.35, a: 0.9, noCull: true }, [ur, ut, [0, 0, 1]]);
+      s.glow([1.05 * ur[0], 1.05 * ur[1], 0], 0.12, rgb, 0.6);
+    }
+    if (S.labels) s.label([pe[0], pe[1], 0.09], tk.pr.sym, { color: tk.color, font: '700 13.5px "Barlow Condensed", "Arial Narrow", sans-serif' });
   }
   function drawBeam(x, y, P, side, beta) {
     const col = P.color;
@@ -231,8 +347,10 @@
   /* ------------------------------------------------------------------
      Explosion
      ------------------------------------------------------------------ */
+  function centre() { if (v3 && v3.on) { const p = v3.scene.project([0, 0, 0]); if (p) return [p.x, p.y]; } return [W / 2, H / 2]; }
   function boom() {
-    const res = ev.res, cx = W / 2, cy = H / 2;
+    const res = ev.res, [cx, cy] = centre();
+    if (ev) ev.boomAt = performance.now();
     const big = clamp(Math.log10(1 + Math.max(res.Q, 0)) / 3.4, 0.15, 1);
     if (res.outcome === 'bounce') {
       fx.ring(cx, cy, { speed: 160, life: 0.6, color: '255,150,210', width: 2 });
@@ -365,6 +483,7 @@
   }
   function init() {
     cv = $('#collCanvas'); shake = shaker($('#collWrap'));
+    v3 = CL.V3.attach($('#collWrap'), { home: { yaw: -1.1, pitch: 0.62, dist: 3.9, target: [0, 0, -0.08], fov: 46 }, storeKey: 'cl-3d-coll' });
     bindControls(); sync(); preview(); renderMissions(); narrateColl(null);
     CL.grip($('#collGrip'), {
       axis: 'y', get: () => H,

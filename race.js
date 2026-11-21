@@ -4,7 +4,7 @@
    ===================================================================== */
 (() => {
   'use strict';
-  const { PHYS, C, $, $$, clamp, TAU, e, pl, en, len, si, pct, audio, FX, shaker, arrow, haloText, pill, hexA, fitCanvas, bindRange, segInit, toast, missions, reduceMotion } = CL;
+  const { PHYS, C, $, $$, clamp, TAU, e, pl, en, len, si, pct, audio, FX, shaker, arrow, haloText, pill, hexA, hexRGB, fitCanvas, bindRange, segInit, toast, missions, reduceMotion } = CL;
 
   const CHOICES = ['proton', 'deuteron', 'alpha', 'carbon', 'electron', 'positron'];
   const NAMES = { proton: 'Proton', deuteron: 'Deuteron', alpha: 'Alpha particle', carbon: 'Carbon-12 ion', electron: 'Electron', positron: 'Positron' };
@@ -20,7 +20,7 @@
   missions.add({ id: 'race-tie', screen: 'race', title: 'Dead heat', goal: 'In the Cyclotron Grand Prix, have the top two finish within 1 % of each other, even though they have different masses.' });
   missions.add({ id: 'race-dnf', screen: 'race', title: 'Did not finish', goal: 'Make a racer drop out of the Grand Prix because it falls out of step with the RF. Which physics is to blame?' });
 
-  let race = null, active = false, cv, ctx, W = 600, H = 400, shake, replay = null, ctlVal = null;
+  let race = null, active = false, cv, ctx, W = 600, H = 400, shake, replay = null, ctlVal = null, v3 = null;
   let userH = +CL.store.get('cl-h-race', 0) || 0;            // 0 = automatic height
   let trailCv = null, trailCtx = null, dpr = 1;
   const fx = new FX();
@@ -284,13 +284,117 @@
     haloText(ctx, W > 640 ? `Identical machines: B = ${pl(S.gpB, 3)} T, R = ${pl(S.gpR, 3)} m, V = ${pl(S.gpV, 3)} kV · RF ${S.gpRf === 'fm' ? 'follows each particle' : 'fixed, tuned to each particle'}` : `B ${pl(S.gpB, 3)} T · R ${pl(S.gpR, 3)} m · V ${pl(S.gpV, 3)} kV · RF ${S.gpRf === 'fm' ? 'follows' : 'fixed'}`, W / 2, H - 12, { font: '600 13px "Barlow Condensed", "Arial Narrow", sans-serif', color: '#b9adff' });
   }
 
+  /* ------------------------------------------------------------------
+     3-D views. Sprint: the gate, the magnet's field region (field lines
+     between two glass pole plates) and the detector plate, on a floor.
+     Grand Prix: the identical cyclotrons side by side.
+     ------------------------------------------------------------------ */
+  const GP_R = 0.42, GP_GAP = 1.15;
+  const gpCentre = i => [(i - (race.racers.length - 1) / 2) * GP_GAP, 0, 0];
+  function world3D(o, t) {                  // where a racer is, in 3-D world units (metres for the sprint)
+    if (race.type === 'sprint') { const st = sprintState(o, t); return [st.x, st.y + laneY(o), 0.012]; }
+    const c = gpCentre(race.racers.indexOf(o)), st = gpState(o, t), k = GP_R / S.gpR;
+    return [c[0] + st.x * k, c[1] + st.y * k, 0.012];
+  }
+  function draw3D(t, now) {
+    const s = v3.scene;
+    if (S.type === 'sprint') {
+      s.begin(ctx, W, H, { target: [0.38, 0.02, 0], dist: 1.75 });
+      sprint3D(s, t, now);
+    } else {
+      const n = race ? race.racers.length : 3, span = (n - 1) * GP_GAP + 2 * GP_R;
+      s.begin(ctx, W, H, { target: [0, -0.05, 0], dist: 0.9 + span * 0.85 });
+      gp3D(s, t, now);
+    }
+    s.end();
+    haloText(ctx, '3D view: drag to turn it', 12, H - 14, { font: '600 12.5px "Barlow Condensed", "Arial Narrow", sans-serif', color: '#93a197', align: 'left' });
+  }
+  function sprint3D(s, t, now) {
+    const B = S.B, Lx = GEO.Lx, Hy = GEO.Hy, gate = GEO.gate, hp = 0.07;
+    s.grid(-0.02, -0.5, 1.3, -0.7, 0.7, 0.1);
+    s.box([0.4, 0, -0.11], [0.95, 0.62, 0.012], { rgb: [26, 33, 30], layer: 'back' });
+    if (Math.abs(B) > 1e-9) {
+      // pole plates above and below the field region, and the field lines between them
+      s.box([Lx / 2, 0, -hp - 0.006], [Lx / 2, Hy, 0.006], { rgb: [150, 140, 220], a: 0.16, noCull: true, stroke: 'rgba(179,166,255,0.35)', shade: false, layer: 'back' });
+      s.box([Lx / 2, 0, hp + 0.006], [Lx / 2, Hy, 0.006], { rgb: [150, 140, 220], a: 0.08, noCull: true, stroke: 'rgba(179,166,255,0.35)', shade: false, bias: -10 });
+      const fa = clamp(0.16 + 0.1 * Math.abs(B), 0.18, 0.42), sp = 0.125;
+      for (let x = sp / 2; x < Lx; x += sp) for (let y = -Hy + sp / 2; y < Hy; y += sp) {
+        const top = [x, y, hp], bot = [x, y, -hp];
+        if (B > 0) s.arrow(top, bot, `rgba(179,166,255,${fa})`, 1, 0.22); else s.arrow(bot, top, `rgba(179,166,255,${fa})`, 1, 0.22);
+      }
+      // detector plate along the entrance side of the field
+      for (const sg of [1, -1]) s.box([0.004, sg * (Hy + 0.012) / 2, 0], [0.004, (Hy - 0.012) / 2, 0.05], { rgb: [185, 195, 188] });
+      s.label([0.01, Hy * 0.8, 0.09], 'detector plate', { color: '#d3dcd5' });
+      s.label([Lx, -Hy, hp + 0.04], `B = ${pl(Math.abs(B), 3)} T, pointing ${B > 0 ? 'down' : 'up'}`, { color: '#b9adff', align: 'right' });
+    } else {
+      for (let i = 0; i < 16; i++) s.poly([[Lx - 0.02, -Hy + i * 2 * Hy / 16, 0.001], [Lx, -Hy + i * 2 * Hy / 16, 0.001], [Lx, -Hy + (i + 1) * 2 * Hy / 16, 0.001], [Lx - 0.02, -Hy + (i + 1) * 2 * Hy / 16, 0.001]], { rgb: i % 2 ? [238, 242, 236] : [17, 17, 17], shade: false, bias: 1e3 });
+      s.label([Lx, Hy, 0.06], 'finish line', { color: '#eef2ec' });
+      s.label([Lx / 2, -Hy, 0.06], 'B = 0: a straight drag race', { color: '#b9adff' });
+    }
+    // the gate: two electrode plates with a slit for the beam
+    const gh = 0.06;
+    for (const [x, rgb] of [[-gate, [229, 72, 63]], [0, [62, 126, 230]]]) for (const sg of [1, -1]) s.box([x, sg * (gh / 2 + 0.006), 0], [0.003, gh / 2 - 0.004, gh], { rgb, a: 0.85, noCull: true, emit: rgb.join(','), emitA: 0.15 });
+    if (race && race.state === 'run' && t < Math.max(...race.racers.map(o => o.res ? o.res.tAcc : 0))) for (let i = 0; i < 3; i++) s.arrow([-gate + 0.004, 0, -gh * 0.6 + i * gh * 0.6], [-0.004, 0, -gh * 0.6 + i * gh * 0.6], 'rgba(255,166,70,0.85)', 1.6, 0.3);
+    s.label([-gate / 2, 0, -gh - 0.03], 'gate', { color: '#ffd8a0' });
+    if (!race) return;
+    for (const o of race.racers) {
+      const oy = laneY(o), tA = o.res.tAcc, pts = [[-gate, oy, 0.012]], rgb = hexRGB(o.color);
+      const st = sprintState(o, t);
+      if (t > 0) pts.push([t < tA ? st.x : 0, oy, 0.012]);
+      if (t > tA) {
+        if (o.res.mode === 'line') pts.push([st.x, oy, 0.012]);
+        else { const th = o.res.w * (Math.min(t, o.res.tFin) - tA), r = o.res.r, rot = o.res.rot, n = Math.max(8, Math.ceil(th / 0.05)); for (let k = 1; k <= n; k++) { const a = th * k / n; pts.push([r * Math.sin(a), rot * r * (1 - Math.cos(a)), 0.012]); } }
+      }
+      if (pts.length > 1) { s.path(pts, `rgba(${rgb},0.3)`, 7, { additive: true, chunk: 80 }); s.path(pts, o.color, 2.4, { chunk: 10 }); }
+      const p = [st.x, st.y + oy, 0.012];
+      s.glow(p, 0.045, rgb, 0.95); s.sphere(p, 0.008, [255, 255, 255], { flat: true });
+      if (o.res.mode === 'arc' && o.res.r < 0.01 && t > tA && !o.finished) s.label([0.03, oy, 0.05], `${o.part.symbol}: tiny loop, 2r = ${len(2 * o.res.r, 3)}`, { color: o.color, align: 'left' });
+      if (o.finished) {
+        const tx = o.res.finish === 'plate' ? `${o.part.symbol} lands at ${len(Math.abs(o.res.yEnd), 3)}` : o.res.finish === 'line' ? `${o.part.symbol} ${si(o.res.tFin, 's', 4)}` : `${o.part.symbol} hit the wall`;
+        if (o.res.finish === 'plate') s.label([-0.05, p[1], 0.02], tx, { pill: hexA(o.color, 0.92), fg: '#0b0f0c', dy: -22 * o.lane });
+        else s.label([p[0], p[1], 0.07], tx, { pill: hexA(o.color, 0.92), fg: '#0b0f0c', dy: -10 - 18 * (o.lane % 2) });
+      }
+    }
+  }
+  function gp3D(s, t, now) {
+    const n = race ? race.racers.length : 3, span = (n - 1) * GP_GAP + 2 * GP_R;
+    s.grid(-0.06, -span / 2 - 0.3, span / 2 + 0.3, -0.9, 0.9, 0.15);
+    if (!race) return;
+    race.racers.forEach((o, i) => {
+      const c = gpCentre(i), k = GP_R / S.gpR, rgb = hexRGB(o.color), R = GP_R;
+      // magnet: yoke plate under, coil ring, chamber, dees (glassy copper)
+      s.cyl([c[0], c[1], -0.05], [c[0], c[1], -0.032], R * 1.22, { rgb: [52, 60, 56], layer: 'back' }, 40);
+      s.tube([c[0], c[1], -0.032], [c[0], c[1], 0.0], R * 1.08, R * 1.2, { rgb: [176, 98, 46] }, 40);
+      s.poly(Array.from({ length: 48 }, (_, j) => [c[0] + R * 1.05 * Math.cos(TAU * j / 48), c[1] + R * 1.05 * Math.sin(TAU * j / 48), -0.031]), { rgb: [14, 22, 18], layer: 'back' });
+      // the spiral so far (flat, on the mid-plane): drawn in the back layer so it needs no sorting
+      const st = gpState(o, t), pts = [];
+      for (let j = 0; j <= st.i; j++) {
+        const g = o.run.segs[j], tEnd = j === st.i ? clamp(t, g.t0, g.t1) : g.t1;
+        if (g.type === 'arc') { const span2 = g.w * (tEnd - g.t0), m = Math.max(2, Math.ceil(span2 / 0.25)); for (let q = 0; q <= m; q++) { const a = g.th0 + g.rot * span2 * q / m; pts.push([c[0] + (g.cx + g.r * Math.cos(a)) * k, c[1] + (g.cy + g.r * Math.sin(a)) * k, -0.012]); } }
+        else { const L = g.v * (tEnd - g.t0); pts.push([c[0] + g.x0 * k, c[1] + g.y0 * k, -0.012], [c[0] + (g.x0 + g.ux * L) * k, c[1] + (g.y0 + g.uy * L) * k, -0.012]); }
+      }
+      if (pts.length > 1) s.path(pts, hexA(o.color, 0.8), 1.6, { layer: 'back', chunk: 600 });
+      for (const sg of [1, -1]) {
+        const shape = []; for (let j = 0; j <= 24; j++) { const a = -Math.PI / 2 + Math.PI * j / 24; shape.push([c[0] + sg * (0.012 + R * Math.cos(a)), c[1] + R * Math.sin(a)]); }
+        s.prism(shape, -0.004, 0.022, { rgb: [201, 128, 63], a: 0.28, noCull: true, stroke: 'rgba(230,166,104,0.55)', topA: 0.16 });
+      }
+      const p = world3D(o, t);
+      s.glow(p, 0.05, rgb, 0.95); s.sphere(p, 0.01, [255, 255, 255], { flat: true });
+      s.label([c[0], c[1] + R * 1.25, 0.06], `${o.part.symbol}  ${NAMES[o.key]}`, { color: o.color, font: '700 14.5px "Barlow Condensed", "Arial Narrow", sans-serif' });
+      s.label([c[0], c[1] - R * 1.3, 0.0], `K = ${en(st.K, 3)} · f = ${si(o.pred.fc, 'Hz', 3)}`, { color: '#eef2ec' });
+      if (o.ext * k < 0.015) s.label([c[0], c[1] - R * 0.45, 0.04], `tiny orbits: r ≤ ${len(o.ext, 2)}`, { color: o.color });
+      if (o.finished) s.label([c[0], c[1], 0.12], o.dnf ? 'did not finish' : 'extracted: ' + ['1st', '2nd', '3rd', '4th'][o.place - 1], { pill: o.dnf ? 'rgba(255,84,104,0.92)' : 'rgba(255,212,59,0.95)', fg: '#140b00', font: '700 13.5px "Barlow Condensed", "Arial Narrow", sans-serif' });
+    });
+  }
+
   function draw(now) {
     const { ctx: c } = fitCanvas(cv, W, H); ctx = c;
     ctx.clearRect(0, 0, W, H);
     // arena backdrop
     CL.screenBg(ctx, W, H, { grid: 40, ticks: false });
     const t = race ? race.clock : 0;
-    if (S.type === 'sprint') drawSprint(t, now); else drawGP(t, now);
+    if (v3 && v3.on) draw3D(t, now);
+    else if (S.type === 'sprint') drawSprint(t, now); else drawGP(t, now);
     fx.draw(ctx, W, H);
   }
 
@@ -459,6 +563,7 @@
     $('#raceTime').textContent = `t = ${si(race ? race.clock : 0, 's', 4)}` + (race ? ` · slowed down ≈ ${e((replay ? (replay.real / (replay.t1 - replay.t0)) : duration() / race.Tmax), 2)}×` : '');
   }
   function finishPoint(o) {
+    if (v3 && v3.on) { const q = v3.scene.project(world3D(o, o.tEnd)); if (q) return { x: q.x, y: q.y }; }
     if (race.type === 'sprint') { sprintView(); const st = sprintState(o, o.tEnd); return { x: SX(st.x), y: SY(st.y + laneY(o)) }; }
     const L = gpLayout(), i = race.racers.indexOf(o), k = L.rad / S.gpR, st = gpState(o, o.tEnd);
     return { x: L.cell * (i + 0.5) + st.x * k, y: L.cy - st.y * k };
@@ -535,6 +640,7 @@
   function init() {
     cv = $('#raceCanvas');
     shake = shaker($('#raceWrap'));
+    v3 = CL.V3.attach($('#raceWrap'), { home: { yaw: -1.85, pitch: 0.78, dist: 1.75, target: [0.38, 0.02, 0], fov: 46 }, storeKey: 'cl-3d-race' });
     buildRacers(); syncType(); bindControls(); renderMissions();
     CL.grip($('#raceGrip'), {
       axis: 'y', get: () => H,

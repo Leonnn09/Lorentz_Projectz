@@ -1134,3 +1134,14 @@ body[data-skin="classroom"] .btn-ride-home svg { color: #b86e00; filter: none; }
   .nameplate { padding: 5px 20px 5px 21px; gap: 6px; }
   .np-by { font-size: 11.5px; }
 }
+
+/* ============================== 3-D views (all screens) ============================== */
+.zbtn-3d { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 0; }
+.zbtn-3d svg { width: 17px; height: 17px; display: block; }
+.zbtn-3d span { font: 700 10px/1 var(--font-cond); letter-spacing: 0.05em; margin-top: -1px; }
+.zbtn-3d.is-on { color: #2b1900; background: linear-gradient(#ffcf6a, #f0a020); box-shadow: 0 0 14px rgba(255, 176, 32, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 2px 0 #6b4300; }
+.zbtn-3d.is-on:hover { color: #000; }
+.hud-3d { z-index: 4; }
+.is-3d canvas { cursor: grab; }
+.is-3d.is-orbiting canvas { cursor: grabbing; }
+.stage-wrap.is-3d .hud-legend, .stage-wrap.is-3d .probe, .stage-wrap.is-3d .hud-scale { display: none; }
