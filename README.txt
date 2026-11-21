@@ -17,7 +17,8 @@ physics.js       the physics engine (pure functions, testable on its own):
                    reluctance coil gun (thick-solenoid field, saturation, RK4) and magnet-and-ball rifle
 core.js          shared helpers: formatting, sound (Web Audio), particle effects, plotting, sliders, missions
 view3d.js        a small 3-D renderer on the 2-D canvas (orbit camera, perspective, shading, depth sorting)
-                   and the 3D key with drag, pinch and zoom controls used by every screen
+                   with smooth metal shading, soft shadows and a lit floor; the 3D, full-screen and Ride
+                   controls every screen shares (orbit camera, chase camera, drag to look around)
 lab.js           Cyclotron screen: machine view (flat, 3D and ride-along), graphs, verbose data, chaos mode, overload mode,
                    slow-motion replay, rainbow trails, measuring tape, stopwatch, field probe, notebook,
                    and the ride-along view (seen from just behind the particle, with its own slowed clock)

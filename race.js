@@ -55,6 +55,7 @@
     renderBoard(); renderResults(null);
     $('#raceReplay').disabled = true;
     setStatus(S.type === 'sprint' ? 'Ready: press Start race' : 'Grand Prix ready: press Start race');
+    if (v3 && v3.updateRide) v3.updateRide();
   }
   const duration = () => (S.slow ? 10 : 1) * (race.type === 'sprint' ? 6 : 8);   // real seconds for the whole race
 
@@ -290,6 +291,8 @@
      Grand Prix: the identical cyclotrons side by side.
      ------------------------------------------------------------------ */
   const GP_R = 0.42, GP_GAP = 1.15;
+  let rideIdx = 0;
+  const rideRacer = () => race && race.racers.length ? race.racers[rideIdx % race.racers.length] : null;
   const gpCentre = i => [(i - (race.racers.length - 1) / 2) * GP_GAP, 0, 0];
   function world3D(o, t) {                  // where a racer is, in 3-D world units (metres for the sprint)
     if (race.type === 'sprint') { const st = sprintState(o, t); return [st.x, st.y + laneY(o), 0.012]; }
@@ -298,21 +301,39 @@
   }
   function draw3D(t, now) {
     const s = v3.scene;
+    const n = race ? race.racers.length : 3, span = (n - 1) * GP_GAP + 2 * GP_R, rc = v3.ride && race ? rideCam(t) : null;
     if (S.type === 'sprint') {
-      s.begin(ctx, W, H, { target: [0.38, 0.02, 0], dist: 1.75 });
+      s.begin(ctx, W, H, rc || { target: [0.38, 0.02, 0], dist: 1.75 });
       sprint3D(s, t, now);
     } else {
-      const n = race ? race.racers.length : 3, span = (n - 1) * GP_GAP + 2 * GP_R;
-      s.begin(ctx, W, H, { target: [0, -0.05, 0], dist: 0.9 + span * 0.85 });
+      s.begin(ctx, W, H, rc || { target: [0, -0.05, 0], dist: 0.9 + span * 0.85 });
       gp3D(s, t, now);
     }
     s.end();
     haloText(ctx, '3D view: drag to turn it', 12, H - 14, { font: '600 12.5px "Barlow Condensed", "Arial Narrow", sans-serif', color: '#93a197', align: 'left' });
   }
+  // the ride camera: just behind the chosen racer, looking where it is going
+  function rideCam(t) {
+    const o = rideRacer(); if (!o) return null;
+    const p = world3D(o, t);
+    let hd = 0, dist = 0.2, pitch = 0.3;
+    if (race.type === 'sprint') {
+      const tA = o.res.tAcc;
+      if (t > tA && o.res.mode === 'arc') { const a = o.res.w * (Math.min(t, o.res.tFin) - tA); hd = Math.atan2(o.res.rot * Math.sin(a), Math.cos(a)); dist = clamp(o.res.r * 1.9, 0.015, 0.34); pitch = 0.62; }
+      else { dist = 0.26; pitch = 0.45; }
+    } else {
+      const st = gpState(o, t), g = st.s, k = GP_R / S.gpR;
+      if (g.type === 'arc') { const a = g.th0 + g.rot * g.w * (clamp(t, g.t0, g.t1) - g.t0); hd = Math.atan2(g.rot * Math.cos(a), -g.rot * Math.sin(a)); dist = clamp(Math.hypot(st.x, st.y) * k * 0.8, 0.03, GP_R * 0.6); }
+      else { hd = Math.atan2(g.uy, g.ux); dist = GP_R * 0.5; }
+      pitch = 0.38;
+    }
+    return { target: [p[0] + Math.cos(hd) * dist * 0.35, p[1] + Math.sin(hd) * dist * 0.35, p[2]], yaw: hd + Math.PI + 0.22, pitch, dist, fov: 62, smooth: 0.1 };
+  }
   function sprint3D(s, t, now) {
     const B = S.B, Lx = GEO.Lx, Hy = GEO.Hy, gate = GEO.gate, hp = 0.07;
-    s.grid(-0.02, -0.5, 1.3, -0.7, 0.7, 0.1);
-    s.box([0.4, 0, -0.11], [0.95, 0.62, 0.012], { rgb: [26, 33, 30], layer: 'back' });
+    s.floor(-0.122, -0.9, 1.7, -0.95, 0.95, { step: 0.1, cx: 0.4, rx: 1.0, ry: 0.75, lightA: 0.18 });
+    s.box([0.4, 0, -0.11], [0.95, 0.62, 0.012], { rgb: [30, 38, 34], layer: 'back', spec: 0.2 });
+    s.shadow([0.5, 0, -0.097], 0.62, 0.48, 0.5);
     if (Math.abs(B) > 1e-9) {
       // pole plates above and below the field region, and the field lines between them
       s.box([Lx / 2, 0, -hp - 0.006], [Lx / 2, Hy, 0.006], { rgb: [150, 140, 220], a: 0.16, noCull: true, stroke: 'rgba(179,166,255,0.35)', shade: false, layer: 'back' });
@@ -347,7 +368,8 @@
       }
       if (pts.length > 1) { s.path(pts, `rgba(${rgb},0.3)`, 7, { additive: true, chunk: 80 }); s.path(pts, o.color, 2.4, { chunk: 10 }); }
       const p = [st.x, st.y + oy, 0.012];
-      s.glow(p, 0.045, rgb, 0.95); s.sphere(p, 0.008, [255, 255, 255], { flat: true });
+      const rd = v3.ride && o === rideRacer();
+      s.glow(p, rd ? 0.018 : 0.045, rgb, 0.95, { reflect: -0.098 }); s.sphere(p, rd ? 0.0035 : 0.008, [255, 255, 255], { flat: true });
       if (o.res.mode === 'arc' && o.res.r < 0.01 && t > tA && !o.finished) s.label([0.03, oy, 0.05], `${o.part.symbol}: tiny loop, 2r = ${len(2 * o.res.r, 3)}`, { color: o.color, align: 'left' });
       if (o.finished) {
         const tx = o.res.finish === 'plate' ? `${o.part.symbol} lands at ${len(Math.abs(o.res.yEnd), 3)}` : o.res.finish === 'line' ? `${o.part.symbol} ${si(o.res.tFin, 's', 4)}` : `${o.part.symbol} hit the wall`;
@@ -358,13 +380,14 @@
   }
   function gp3D(s, t, now) {
     const n = race ? race.racers.length : 3, span = (n - 1) * GP_GAP + 2 * GP_R;
-    s.grid(-0.06, -span / 2 - 0.3, span / 2 + 0.3, -0.9, 0.9, 0.15);
+    s.floor(-0.052, -span / 2 - 0.5, span / 2 + 0.5, -1.0, 1.0, { step: 0.15, rx: span / 2 + 0.3, ry: 0.8, lightA: 0.18 });
     if (!race) return;
     race.racers.forEach((o, i) => {
       const c = gpCentre(i), k = GP_R / S.gpR, rgb = hexRGB(o.color), R = GP_R;
       // magnet: yoke plate under, coil ring, chamber, dees (glassy copper)
-      s.cyl([c[0], c[1], -0.05], [c[0], c[1], -0.032], R * 1.22, { rgb: [52, 60, 56], layer: 'back' }, 40);
-      s.tube([c[0], c[1], -0.032], [c[0], c[1], 0.0], R * 1.08, R * 1.2, { rgb: [176, 98, 46] }, 40);
+      s.shadow([c[0], c[1], -0.051], R * 1.45, R * 1.45, 0.55);
+      s.cyl([c[0], c[1], -0.05], [c[0], c[1], -0.032], R * 1.22, { rgb: [58, 66, 62], layer: 'back', spec: 0.2 }, 48);
+      s.tube([c[0], c[1], -0.032], [c[0], c[1], 0.0], R * 1.08, R * 1.2, { rgb: [190, 106, 50], spec: 0.5, shin: 28 }, 48);
       s.poly(Array.from({ length: 48 }, (_, j) => [c[0] + R * 1.05 * Math.cos(TAU * j / 48), c[1] + R * 1.05 * Math.sin(TAU * j / 48), -0.031]), { rgb: [14, 22, 18], layer: 'back' });
       // the spiral so far (flat, on the mid-plane): drawn in the back layer so it needs no sorting
       const st = gpState(o, t), pts = [];
@@ -379,7 +402,8 @@
         s.prism(shape, -0.004, 0.022, { rgb: [201, 128, 63], a: 0.28, noCull: true, stroke: 'rgba(230,166,104,0.55)', topA: 0.16 });
       }
       const p = world3D(o, t);
-      s.glow(p, 0.05, rgb, 0.95); s.sphere(p, 0.01, [255, 255, 255], { flat: true });
+      const rd = v3.ride && o === rideRacer();
+      s.glow(p, rd ? 0.02 : 0.05, rgb, 0.95, { reflect: -0.05 }); s.sphere(p, rd ? 0.004 : 0.01, [255, 255, 255], { flat: true });
       s.label([c[0], c[1] + R * 1.25, 0.06], `${o.part.symbol}  ${NAMES[o.key]}`, { color: o.color, font: '700 14.5px "Barlow Condensed", "Arial Narrow", sans-serif' });
       s.label([c[0], c[1] - R * 1.3, 0.0], `K = ${en(st.K, 3)} · f = ${si(o.pred.fc, 'Hz', 3)}`, { color: '#eef2ec' });
       if (o.ext * k < 0.015) s.label([c[0], c[1] - R * 0.45, 0.04], `tiny orbits: r ≤ ${len(o.ext, 2)}`, { color: o.color });
@@ -626,10 +650,14 @@
   function resize() {
     if (!active) return;
     const wrap = $('#raceWrap');
-    const w = wrap.clientWidth;
-    const h = userH ? Math.round(clamp(userH, 220, 1600)) : Math.round(clamp(S.type === 'gp' ? w * 0.5 : w * 0.66, 280, Math.max(300, window.innerHeight * 0.62)));
-    wrap.style.setProperty('--arena-h', h + 'px');
-    W = w; H = h;
+    if (v3 && v3.full) { const b = v3.fullBox(); W = b.W; H = b.H; cv.style.height = H + 'px'; }
+    else {
+      cv.style.height = '';
+      const w = wrap.clientWidth;
+      const h = userH ? Math.round(clamp(userH, 220, 1600)) : Math.round(clamp(S.type === 'gp' ? w * 0.5 : w * 0.66, 280, Math.max(300, window.innerHeight * 0.62)));
+      wrap.style.setProperty('--arena-h', h + 'px');
+      W = w; H = h;
+    }
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     if (!trailCv) { trailCv = document.createElement('canvas'); trailCtx = trailCv.getContext('2d'); }
     trailCv.width = Math.round(W * dpr); trailCv.height = Math.round(H * dpr);
@@ -640,7 +668,12 @@
   function init() {
     cv = $('#raceCanvas');
     shake = shaker($('#raceWrap'));
-    v3 = CL.V3.attach($('#raceWrap'), { home: { yaw: -1.85, pitch: 0.78, dist: 1.75, target: [0.38, 0.02, 0], fov: 46 }, storeKey: 'cl-3d-race' });
+    v3 = CL.V3.attach($('#raceWrap'), { home: { yaw: -1.85, pitch: 0.78, dist: 1.75, target: [0.38, 0.02, 0], fov: 46 }, storeKey: 'cl-3d-race',
+      full: { bar: () => $('#raceWrap').nextElementSibling, onChange: () => resize() },
+      ride: { label: () => { const k = racersList()[rideIdx % Math.max(1, racersList().length)]; return k ? `Ride the ${NAMES[k].toLowerCase()}` : 'Ride a racer'; },
+        title: 'Ride along with one racer (Next switches racer)',
+        next: () => { rideIdx = (rideIdx + 1) % Math.max(1, racersList().length); },
+        nextLabel: () => { const L = racersList(), k = L[rideIdx % Math.max(1, L.length)]; return k ? `Riding ${PHYS.PARTICLES[k].symbol} · next ▸` : 'Next ▸'; } } });
     buildRacers(); syncType(); bindControls(); renderMissions();
     CL.grip($('#raceGrip'), {
       axis: 'y', get: () => H,

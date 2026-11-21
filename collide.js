@@ -130,21 +130,23 @@
   const LAYERS = [0.2, 0.4, 0.6, 0.8, 1.0];
   function draw3D(now) {
     const s = v3.scene, cam = ev ? ev.cam : 1, t = now / 1000;
-    s.begin(ctx, W, H, { dist: 3.9 / cam });
+    if (v3.ride) s.begin(ctx, W, H, rideCam()); else s.begin(ctx, W, H, { dist: 3.9 / cam });
     const cut = s.yawNow, open = a => { const d = Math.atan2(Math.sin(a - cut), Math.cos(a - cut)); return Math.abs(d) < 0.95; };
-    s.grid(-0.9, -3.2, 3.2, -3.2, 3.2, 0.4);
+    s.floor(-0.9, -3.4, 3.4, -3.4, 3.4, { step: 0.4, rx: 2.4, ry: 2.4, lightA: 0.2 });
+    s.shadow([0, 0, -0.899], 1.75, 1.75, 0.6);
     // support cradle
-    for (const x of [-0.9, 0.9]) s.box([x, 0, -0.78], [0.12, 1.25, 0.12], { rgb: [44, 52, 48], layer: 'back' });
+    for (const x of [-0.9, 0.9]) s.box([x, 0, -0.78], [0.12, 1.25, 0.12], { rgb: [44, 52, 48], layer: 'back', spec: 0.15 });
     // iron return yoke (an octagon), magnet coil and calorimeter: cut open towards you
-    const N = 32;
+    const N = 48;
     const P = (r, ang, z) => [r * Math.cos(ang), r * Math.sin(ang), z];
-    const ringWall = (r0, r1, h, rgb, a, emit) => {
+    const ringWall = (r0, r1, h, rgb, a, emit, spec = 0.12) => {
       const cull = a >= 1, gone = i => open(TAU * (i + 0.5) / N);
       for (let i = 0; i < N; i++) {
         const a0 = TAU * i / N, a1 = TAU * (i + 1) / N, am = (a0 + a1) / 2;
         if (gone(i)) continue;
-        s.poly([P(r1, a0, -h), P(r1, a1, -h), P(r1, a1, h), P(r1, a0, h)], { rgb, a, out: [Math.cos(am), Math.sin(am), 0], cull });
-        s.poly([P(r0, a0, -h), P(r0, a0, h), P(r0, a1, h), P(r0, a1, -h)], { rgb, a: a * 0.8, out: [-Math.cos(am), -Math.sin(am), 0], cull });
+        const n0 = [Math.cos(a0), Math.sin(a0), 0], n1 = [Math.cos(a1), Math.sin(a1), 0];
+        s.poly([P(r1, a0, -h), P(r1, a1, -h), P(r1, a1, h), P(r1, a0, h)], { rgb, a, out: [Math.cos(am), Math.sin(am), 0], cull, sn: [n0, n1], spec, shin: 26 });
+        s.poly([P(r0, a0, -h), P(r0, a1, -h), P(r0, a1, h), P(r0, a0, h)], { rgb, a: a * 0.8, out: [-Math.cos(am), -Math.sin(am), 0], cull, sn: [n0.map(v => -v), n1.map(v => -v)], spec, shin: 26 });
         s.poly([P(r0, a0, h), P(r1, a0, h), P(r1, a1, h), P(r0, a1, h)], { rgb, a, out: [0, 0, 1], emit, cull });
         s.poly([P(r0, a0, -h), P(r0, a1, -h), P(r1, a1, -h), P(r1, a0, -h)], { rgb, a, out: [0, 0, -1], cull });
         // the cut faces where the opening starts and ends
@@ -152,9 +154,9 @@
         if (gone((i + N - 1) % N)) s.poly([P(r0, a0, -h), P(r1, a0, -h), P(r1, a0, h), P(r0, a0, h)], { rgb: rgb.map(c => c * 1.2), a });
       }
     };
-    ringWall(1.3, 1.46, 0.62, [58, 66, 62], 1);
-    ringWall(1.18, 1.25, 0.56, [176, 98, 46], 1, S.B > 0 ? '255,120,40' : null);
-    ringWall(1.02, 1.14, 0.5, [120, 96, 58], 0.55);
+    ringWall(1.3, 1.46, 0.62, [62, 70, 66], 1, null, 0.14);
+    ringWall(1.18, 1.25, 0.56, [186, 104, 48], 1, S.B > 0 ? '255,120,40' : null, 0.5);
+    ringWall(1.02, 1.14, 0.5, [120, 96, 58], 0.55, null, 0.2);
     // tracker layers: thin glassy cylinders
     for (const r of LAYERS) {
       s.circle([0, 0, 0.42], [0, 0, 1], r, 'rgba(200,225,208,0.22)', 1, {}, 64);
@@ -192,6 +194,7 @@
         let xa = -dist * (bA / bmax) * f, xb = dist * (bB / bmax) * f;
         if (bounce) { xa = Math.min(xa, -0.05); xb = Math.max(xb, 0.05); }
         beam3D(s, xa, HEP[S.a], -1, bA); beam3D(s, xb, HEP[S.b], 1, bB);
+        if (v3.ride) s.label([xa, 0, 0.08], `riding beam A: ${HEP[S.a].sym} at v = ${pl(bA, 4)} c`, { color: '#ffd08a', dy: -10 });
       } else {
         const tp = tau - Tc;
         for (const tk of ev.tracks) track3D(s, tk, tp);
@@ -200,18 +203,40 @@
         const age = tp;
         if (age < 0.9 && res.outcome !== 'bounce') {
           const big = clamp(Math.log10(1 + Math.max(res.Q, 0)) / 3.4, 0.15, 1);
-          s.glow([0, 0, 0], 0.15 + 2.2 * age, res.outcome === 'annihilate' ? '200,230,255' : '255,200,140', (1 - age / 0.9) * (0.35 + 0.5 * big), { core: true });
+          s.glow([0, 0, 0], 0.15 + 2.2 * age, res.outcome === 'annihilate' ? '200,230,255' : '255,200,140', (1 - age / 0.9) * (0.35 + 0.5 * big), { core: true, reflect: -0.9 });
         }
       }
     }
     s.end();
     haloText(ctx, '3D view: drag to turn it', 12, H - 14, { font: '600 12.5px "Barlow Condensed", "Arial Narrow", sans-serif', color: '#93a197', align: 'left' });
   }
+  // the ride camera: behind beam A as it flies in, then behind the fastest charged particle that comes out
+  function leadTrack() {
+    if (!ev || !ev.tracks.length) return null;
+    const charged = ev.tracks.filter(tk => !tk.neutral);
+    return (charged.length ? charged : ev.tracks).reduce((a, b) => (b.pr.K > a.pr.K ? b : a));
+  }
+  function rideCam() {
+    if (!ev) return { target: [-2.3, 0, 0], yaw: Math.PI + 0.14, pitch: 0.2, dist: 0.75, fov: 62 };
+    const res = ev.res, tau = ev.tau, Tc = VIS.Tc;
+    if (tau < Tc) {
+      const bmax = Math.max(res.v1, res.v2, 1e-9), xa = -2.8 * (res.v1 / bmax) * (1 - tau / Tc);
+      return { target: [Math.min(xa, -0.02) + 0.35, 0, 0], yaw: Math.PI + 0.14, pitch: 0.22, dist: 0.72, fov: 62 };
+    }
+    const tk = leadTrack(); if (!tk) return { target: [0, 0, 0], yaw: Math.PI + 0.3, pitch: 0.3, dist: 0.8, fov: 58 };
+    const L = trackLen(tk), sNow = Math.min(L, (tau - Tc) * 0.75 * Math.max(tk.beta, 0.05));
+    const p = trackPos(tk, Math.max(0, sNow)), q = trackPos(tk, Math.min(L, Math.max(0, sNow) + 0.03));
+    let hx = q.x - p.x, hy = q.y - p.y; if (Math.hypot(hx, hy) < 1e-6) { const q0 = trackPos(tk, Math.max(0, sNow - 0.03)); hx = p.x - q0.x; hy = p.y - q0.y; }
+    if (Math.hypot(hx, hy) < 1e-9) { hx = Math.cos(tk.th); hy = Math.sin(tk.th); }
+    const hd = Math.atan2(hy, hx), lead = 0.12;
+    return { target: [p.x + Math.cos(hd) * lead, p.y + Math.sin(hd) * lead, 0], yaw: hd + Math.PI + 0.22, pitch: 0.3, dist: 0.68, fov: 60, smooth: 0.18 };
+  }
   function beam3D(s, x, P, side, beta) {
     const rgb = hexRGB(P.color), len = 0.25 + 0.6 * beta;
     s.line([x + side * len, 0, 0], [x, 0, 0], `rgba(${rgb},0.85)`, 4, { additive: true });
-    s.glow([x, 0, 0], 0.16, rgb, 0.95);
-    s.sphere([x, 0, 0], 0.03, [255, 255, 255], { flat: true });
+    const rd = v3 && v3.ride;
+    s.glow([x, 0, 0], rd ? 0.07 : 0.16, rgb, 0.95, { reflect: -0.9 });
+    s.sphere([x, 0, 0], rd ? 0.011 : 0.03, [255, 255, 255], { flat: true });
     if (S.labels) s.label([x, 0, 0.16], P.sym, { color: P.color, font: '700 14.5px "Barlow Condensed", "Arial Narrow", sans-serif' });
   }
   function track3D(s, tk, tp) {
@@ -225,10 +250,11 @@
     if (!tk.neutral) for (const R of LAYERS) {                   // hits on the tracker layers
       for (let i = 0; i < n; i++) {
         const r0 = Math.hypot(pts[i][0], pts[i][1]), r1 = Math.hypot(pts[i + 1][0], pts[i + 1][1]);
-        if ((r0 - R) * (r1 - R) <= 0) { s.glow(pts[i + 1], 0.045, rgb, 0.9); s.sphere(pts[i + 1], 0.012, tk.color, { flat: true }); }
+        if ((r0 - R) * (r1 - R) <= 0) { s.glow(pts[i + 1], 0.045, rgb, 0.9, { reflect: -0.9 }); s.sphere(pts[i + 1], 0.012, tk.color, { flat: true }); }
       }
     }
     const pe = pts[pts.length - 1];
+    if (sNow < L - 1e-6) { const rd = v3 && v3.ride; s.glow(pe, (tk.neutral ? 0.05 : 0.08) * (rd ? 0.55 : 1), rgb, 0.95, { reflect: -0.9 }); s.sphere(pe, rd ? 0.007 : 0.014, [255, 255, 255], { flat: true }); }
     if (sNow >= L - 1e-6 && (tk.neutral || Math.hypot(pe[0], pe[1]) > 0.97)) {   // a tower in the calorimeter
       const h = clamp(0.08 + 0.1 * Math.log10(1 + tk.pr.E), 0.06, 0.46), ang = Math.atan2(pe[1], pe[0]);
       const ur = [Math.cos(ang), Math.sin(ang), 0], ut = [-Math.sin(ang), Math.cos(ang), 0];
@@ -431,6 +457,7 @@
     el.addEventListener('click', ev2 => { const b = ev2.target.closest('button[data-key]'); if (!b) return; S[side] = b.dataset.key; sync(); preview(); });
   }
   function sync() {
+    if (v3 && v3.updateRide) v3.updateRide();
     for (const b of $$('#collA button')) b.setAttribute('aria-checked', String(b.dataset.key === S.a));
     for (const b of $$('#collB button')) b.setAttribute('aria-checked', String(b.dataset.key === S.b));
     ctlA.sync(); ctlB.sync();
@@ -476,14 +503,19 @@
   function renderMissions() { missions.render($('#collMissions'), 'collide'); const [d, n] = missions.count('collide'); $('#collMissionCount').textContent = `${d} / ${n}`; }
   function resize() {
     if (!active) return;
-    const wrap = $('#collWrap'), w = wrap.clientWidth;
+    const wrap = $('#collWrap');
+    if (v3 && v3.full) { const b = v3.fullBox(); W = b.W; H = b.H; cv.style.height = H + 'px'; return; }
+    cv.style.height = '';
+    const w = wrap.clientWidth;
     const h = userH ? Math.round(clamp(userH, 220, 1600)) : Math.round(clamp(w * 0.72, 300, Math.max(320, window.innerHeight * 0.62)));
     wrap.style.setProperty('--arena-h', h + 'px');
     W = w; H = h;
   }
   function init() {
     cv = $('#collCanvas'); shake = shaker($('#collWrap'));
-    v3 = CL.V3.attach($('#collWrap'), { home: { yaw: -1.1, pitch: 0.62, dist: 3.9, target: [0, 0, -0.08], fov: 46 }, storeKey: 'cl-3d-coll' });
+    v3 = CL.V3.attach($('#collWrap'), { home: { yaw: -1.1, pitch: 0.62, dist: 3.9, target: [0, 0, -0.08], fov: 46 }, storeKey: 'cl-3d-coll',
+      full: { bar: () => $('#collWrap').nextElementSibling, onChange: () => resize() },
+      ride: { label: () => `Ride the ${HEP[S.a].name.toLowerCase()}`, title: 'Ride beam A into the collision, then fly out with the fastest new particle' } });
     bindControls(); sync(); preview(); renderMissions(); narrateColl(null);
     CL.grip($('#collGrip'), {
       axis: 'y', get: () => H,

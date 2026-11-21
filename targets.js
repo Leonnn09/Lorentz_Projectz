@@ -212,18 +212,33 @@
   const ZB = 0.5;                       // beam height above the bench (world units)
   let K3 = 100;                         // flat-view px per 3-D unit
   const X3 = px => (px - x0px) / K3;
+  // the ride camera: just behind the particle being ridden; waits at the end of the beam pipe between shots
+  function rideCam(now, hz) {
+    const sh = [...shots].reverse().find(q => q.ride && (now - q.t0) / 1000 < q.dur + 1.6 && now >= q.t0);
+    const wait = { target: [0.4, 0, ZB], yaw: Math.PI + 0.1, pitch: 0.12, dist: 0.45, fov: 64 };
+    if (beamOn && tr) {
+      const xEnd = tr.stopX != null ? X3(physToPx(tr.stopX)) : X3(xEndPx) + 0.4, u = ((now / 1000) % 6) / 6;
+      return { target: [-0.1 + (xEnd + 0.1) * u + 0.1, 0, ZB], yaw: Math.PI + 0.1, pitch: 0.12, dist: 0.34, fov: 64 };
+    }
+    if (!sh) return wait;
+    const a = (now - sh.t0) / 1000, u = clamp(a / sh.dur, 0, 1), ease = 1 - (1 - u) * (1 - u);
+    const x = X3(physToPx(sh.end * ease)), y = sh.dy / K3 * 1.4, z = ZB + sh.wob / K3 * ease;
+    return { target: [x + 0.1, y, z], yaw: Math.PI + 0.06, pitch: 0.12, dist: 0.3, fov: 64, smooth: 0.06 };
+  }
   function draw3D(now) {
     const s = v3.scene;
     layoutBoxes();
     K3 = Math.max(1, xEndPx - x0px) / 2.4;
     const Ls = X3(xEndPx), hz = 0.42, hy = 0.42, P = part(), prgb = hexRGB(P.color);
-    s.begin(ctx, W, H, { target: [Ls / 2 - 0.3, 0, 0.42], dist: 4.4 });
-    s.grid(0, -2.2, Ls + 1.8, -1.6, 1.6, 0.25);
-    s.box([Ls / 2 - 0.2, 0, -0.03], [Ls / 2 + 1.3, 0.62, 0.03], { rgb: [34, 42, 38], layer: 'back' });
+    if (v3.ride) s.begin(ctx, W, H, rideCam(now, hz)); else s.begin(ctx, W, H, { target: [Ls / 2 - 0.3, 0, 0.42], dist: 4.4 });
+    s.floor(-0.062, -2.4, Ls + 2, -1.8, 1.8, { step: 0.25, cx: Ls / 2, rx: Ls / 2 + 1, ry: 1.2, lightA: 0.18 });
+    s.box([Ls / 2 - 0.2, 0, -0.031], [Ls / 2 + 1.3, 0.62, 0.031], { rgb: [40, 49, 44], layer: 'back', spec: 0.2 });
+    s.shadow([Ls / 2, 0, 0.001], Ls / 2 + 0.25, 0.6, 0.55);
     // beam pipe with a flange
-    s.cyl([-1.7, 0, ZB], [-0.14, 0, ZB], 0.055, { rgb: [150, 162, 156] }, 18);
-    s.cyl([-0.2, 0, ZB], [-0.14, 0, ZB], 0.1, { rgb: [120, 130, 125] }, 18);
-    s.box([-1.1, 0, 0.22], [0.05, 0.08, 0.22], { rgb: [70, 80, 75] });
+    s.cyl([-1.7, 0, ZB], [-0.14, 0, ZB], 0.055, { rgb: [150, 162, 156], spec: 0.55, shin: 30 }, 24);
+    s.cyl([-0.2, 0, ZB], [-0.14, 0, ZB], 0.1, { rgb: [120, 130, 125], spec: 0.4 }, 24);
+    s.box([-1.1, 0, 0.22], [0.05, 0.08, 0.22], { rgb: [70, 80, 75], spec: 0.2 });
+    s.shadow([-1.1, 0, 0.001], 0.16, 0.14, 0.45);
     s.label([-1.3, 0, ZB + 0.17], P.symbol + ' beam', { color: P.color, font: '700 13.5px "Barlow Condensed", "Arial Narrow", sans-serif' });
     if (beamOn) { s.line([-0.14, 0, ZB], [0, 0, ZB], `rgba(${prgb},${0.6 + 0.25 * Math.sin(now / 60)})`, 4, { additive: true }); s.glow([-0.1, 0, ZB], 0.12, prgb, 0.7); }
     // slabs
@@ -235,7 +250,7 @@
         continue;
       }
       const f = clamp((sl.T - T_ROOM) / Math.max(m.limit - T_ROOM, 1), 0, 1);
-      s.box([(x0 + x1) / 2, 0, ZB], [Math.max(0.004, (x1 - x0) / 2 - 0.006), hy, hz], { rgb, a: 0.5, noCull: true, stroke: 'rgba(255,255,255,0.22)', emit: f > 0.05 ? '255,90,30' : null, emitA: f * 0.9 });
+      s.box([(x0 + x1) / 2, 0, ZB], [Math.max(0.004, (x1 - x0) / 2 - 0.006), hy, hz], { rgb, a: 0.5, spec: 0.35, shin: 18, noCull: true, stroke: 'rgba(255,255,255,0.22)', emit: f > 0.05 ? '255,90,30' : null, emitA: f * 0.9 });
       if (f > 0.05) s.glow([(x0 + x1) / 2, 0, ZB], 0.3 + 0.4 * f, '255,110,40', 0.25 + 0.5 * f);
       const dmg = damage(sl);
       if (dmg > 0.45) for (let k = 0; k < 3; k++) { const xx = x0 + (x1 - x0) * (0.25 + 0.25 * k); s.path([[xx, -hy - 0.002, ZB + hz], [xx + 0.03, -hy - 0.002, ZB + hz * 0.4], [xx - 0.02, -hy - 0.002, ZB], [xx + 0.02, -hy - 0.002, ZB - hz * 0.5 * dmg]], `rgba(20,10,10,${0.3 + 0.6 * dmg})`, 1.4); }
@@ -247,11 +262,14 @@
     const age = (performance.now() - lastShotT) / 1000, show = beamOn ? 1 : clamp(1.6 - age / 2.5, 0, 1);
     if (tr && tr.prof.length && show > 0) {
       const Smax = Math.max(...tr.prof.map(q => q.S)) || 1, step = Math.max(1, Math.floor(tr.prof.length / 220)), core = [];
+      let peak = null;
       for (let i = 0; i < tr.prof.length; i += step) {
         const q = tr.prof[i], fS = q.S / Smax, x = X3(physToPx(q.x));
-        s.glow([x, 0, ZB], 0.022 + 0.075 * fS, '255,166,60', show * (0.07 + 0.42 * fS * fS), { layer: 'front' });
+        if (!v3.ride) s.glow([x, 0, ZB], 0.022 + 0.075 * fS, '255,166,60', show * (0.07 + 0.42 * fS * fS), { layer: 'front' });
         core.push([x, 0, ZB]);
+        if (fS > 0.999) peak = [x, 0, ZB];
       }
+      if (v3.ride && peak) s.glow(peak, 0.05, '255,166,60', 0.6 * show, { layer: 'front' });
       if (core.length > 1) s.path(core, `rgba(255,214,150,${0.55 * show})`, 1.6, { layer: 'front', chunk: 400 });
     }
     // where the beam stops, or where it leaves
@@ -268,7 +286,7 @@
       const u = clamp(a / sh.dur, 0, 1), ease = 1 - (1 - u) * (1 - u);
       const x = X3(physToPx(sh.end * ease)), y = sh.dy / K3 * 1.4, z = ZB + sh.wob / K3 * ease;
       s.line([-0.14, y * 0.2, ZB], [x, y, z], `rgba(${prgb},${sh.faint ? 0.35 : 0.85})`, sh.faint ? 1.2 : 2, { layer: 'front' });
-      if (u < 1) s.glow([x, y, z], 0.08, prgb, 0.95, { layer: 'front' });
+      if (u < 1) { s.glow([x, y, z], sh.ride ? 0.03 : 0.08, prgb, 0.95, { layer: 'front' }); if (sh.ride) s.sphere([x, y, z], 0.0055, [255, 255, 255], { flat: true, layer: 'front' }); }
       else if (!sh.done) { const q = s.project([x, y, z]); if (q) shotDone(sh, q.x, q.y); else sh.done = true; }
     }
     s.end();
@@ -334,7 +352,8 @@
     audio.unlock();
     const end = tr.stopX != null ? tr.stopX : (tr.per.length ? tr.per[tr.per.length - 1].xout : 0) + 30;
     lastShotT = performance.now() + delay;
-    shots.push({ t0: performance.now() + delay, dur: faint ? 0.45 : 0.85, end, stopped: tr.stopX != null, dy: faint ? (Math.random() - 0.5) * 12 : (Math.random() - 0.5) * 4, wob: (Math.random() - 0.5) * (PHYS.isLight(part()) ? 22 : 4), faint, done: false });
+    const ride = !faint && v3 && v3.ride;
+    shots.push({ ride, t0: performance.now() + delay, dur: faint ? 0.45 : ride ? 3.6 : 0.85, end, stopped: tr.stopX != null, dy: faint ? (Math.random() - 0.5) * 12 : (Math.random() - 0.5) * 4, wob: (Math.random() - 0.5) * (PHYS.isLight(part()) ? 22 : 4), faint, done: false });
     if (!faint) {
       for (let i = 0; i < slabs.length; i++) { const p = tr.per[i]; if (p.dE > 0 && !slabs[i].destroyed) { slabs[i].hits++; slabs[i].E += p.dE * C.MeV; } }
       totalHits++;
@@ -423,6 +442,7 @@
   }
   function syncBeamBtn() { const b = $('#tgtBeam'); b.setAttribute('aria-pressed', String(beamOn)); b.textContent = beamOn ? 'Beam OFF' : 'Beam ON'; }
   function syncControls() {
+    if (v3 && v3.updateRide) v3.updateRide();
     for (const b of $$('#tgtPart button')) b.setAttribute('aria-checked', String(b.dataset.key === S.part));
     if (ctlK) ctlK.sync(); if (ctlI) ctlI.sync();
   }
@@ -457,7 +477,10 @@
   function renderMissions() { missions.render($('#tgtMissions'), 'targets'); const [d, n] = missions.count('targets'); $('#tgtMissionCount').textContent = `${d} / ${n}`; }
   function resize() {
     if (!active) return;
-    const wrap = $('#tgtWrap'), w = wrap.clientWidth;
+    const wrap = $('#tgtWrap');
+    if (v3 && v3.full) { const b = v3.fullBox(); W = b.W; H = b.H; cv.style.height = H + 'px'; drawGraph(); return; }
+    cv.style.height = '';
+    const w = wrap.clientWidth;
     const h = userH ? Math.round(clamp(userH, 200, 1400)) : Math.round(clamp(w * 0.42, 240, 380));
     wrap.style.setProperty('--arena-h', h + 'px');
     W = w; H = h;
@@ -465,7 +488,10 @@
   }
   function init() {
     cv = $('#tgtCanvas'); shake = shaker($('#tgtWrap'));
-    v3 = CL.V3.attach($('#tgtWrap'), { home: { yaw: -1.2, pitch: 0.42, dist: 4.4, target: [1.2, 0, 0.45], fov: 44 }, storeKey: 'cl-3d-tgt' });
+    v3 = CL.V3.attach($('#tgtWrap'), { home: { yaw: -1.2, pitch: 0.42, dist: 4.4, target: [1.2, 0, 0.45], fov: 44 }, storeKey: 'cl-3d-tgt',
+      full: { bar: () => $('#tgtWrap').nextElementSibling, onChange: () => resize() },
+      ride: { label: () => `Ride a ${part().name.toLowerCase()}`, title: 'Ride one particle into the slabs and watch it slow down and stop (press Fire 1 particle)',
+        onToggle: on => { if (on) toast($('#tgtToast'), '<b>Ride mode.</b> Press <b>Fire 1 particle</b> and you fly with it into the slabs, slowing down until it stops at the Bragg peak. With the beam on, you glide along the beam.', '', 6500); } } });
     bindControls(); loadPreset('therapy'); renderMissions();
     CL.grip($('#tgtGrip'), {
       axis: 'y', get: () => H,

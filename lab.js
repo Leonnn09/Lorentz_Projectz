@@ -332,6 +332,23 @@
     const lab = $('#screen-lab .lab'), tb = $('#screen-lab .timebar'), stage = $('#stage');
     if (!lab || !active) return;
     const wrap0 = $('#stageWrap');
+    if (v3 && v3.full) {                // full screen: the view fills the screen above the floating control bar
+      const box = v3.fullBox(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+      view.dpr = dpr; wrap0.style.width = wrap0.style.height = '';
+      if (pov.on || v3.on) {
+        view.w = box.W; view.h = box.H; view.size = Math.min(box.W, box.H);
+        viewCv.width = Math.round(box.W * dpr); viewCv.height = Math.round(box.H * dpr);
+        viewCv.style.width = box.W + 'px'; viewCv.style.height = box.H + 'px';
+      } else {
+        const size = Math.floor(Math.min(box.W, box.H)); view.w = view.h = 0; view.size = size;
+        for (const cv of [viewCv, staticCv, trailCv]) { cv.width = Math.round(size * dpr); cv.height = Math.round(size * dpr); }
+        viewCv.style.width = viewCv.style.height = size + 'px';
+        setupView(); staticDirty = trailDirty = true;
+      }
+      wrap0.classList.toggle('is-wide', view.size >= 560); wrap0.classList.toggle('is-compact', view.size < 500);
+      return;
+    }
+    viewCv.style.width = viewCv.style.height = '';
     if (pov.on) {                      // riding: the view fills the whole lab, wide like a cinema screen
       const cs = getComputedStyle(lab), padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight), padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
       const w = Math.max(280, Math.floor(lab.clientWidth - padX));
@@ -968,7 +985,7 @@
      ------------------------------------------------------------------ */
   function draw3D(dt, now) {
     const st = stateAt(playT), g = povGeom(), R = g.R, gap = S.gapCm / 100;
-    const ctx = viewCtx, W = view.size, H = view.size, sc = v3.scene;
+    const ctx = viewCtx, W = view.w || view.size, H = view.h || view.size, sc = v3.scene;
     ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
     sc.begin(ctx, W, H, { target: [0, 0, R * 0.35], dist: R * 6.4 });
     const above = sc.eye[2] >= 0;
@@ -984,15 +1001,17 @@
       if (za < 0 && zb > 0) { vbox(c, hx, hy, za, 0, st2); vbox(c, hx, hy, 0, zb, st2); return; }
       sc.box([c[0], c[1], (za + zb) / 2], [hx, hy, (zb - za) / 2], { ...st2, group: grp((za + zb) / 2) });
     };
-    // ---- bottom half of the magnet (and the yoke's side legs)
-    const plateX = 1.78 * R, plateY = 1.38 * R;
-    vbox([0, 0, 0], plateX, plateY, -zTop - tp, -zTop, { rgb: IRON });
-    for (const sg of [1, -1]) vbox([sg * 1.6 * R, 0, 0], 0.18 * R, 0.85 * R, -zTop, zTop, { rgb: IRON });
-    sc.cyl([0, 0, -zTop], [0, 0, -z1], Rpole, { rgb: [104, 114, 109], group: 'lo' }, 40);
+    // ---- the floor it stands on, and the bottom half of the magnet (and the yoke's side legs)
+    const plateX = 1.78 * R, plateY = 1.38 * R, zF = -zTop - tp - 0.002 * R;
+    sc.floor(zF, -3.4 * R, 3.4 * R, -2.8 * R, 2.8 * R, { step: 0.25 * R, rx: 2.6 * R, ry: 2.2 * R, lightA: 0.2 });
+    sc.shadow([0, 0, zF + 0.001 * R], 2.2 * R, 1.8 * R, 0.65);
+    vbox([0, 0, 0], plateX, plateY, -zTop - tp, -zTop, { rgb: IRON, spec: 0.18, stroke: 'rgba(255,255,255,0.08)' });
+    for (const sg of [1, -1]) vbox([sg * 1.6 * R, 0, 0], 0.18 * R, 0.85 * R, -zTop, zTop, { rgb: IRON, spec: 0.18, stroke: 'rgba(255,255,255,0.08)' });
+    sc.cyl([0, 0, -zTop], [0, 0, -z1], Rpole, { rgb: [104, 114, 109], spec: 0.35, shin: 30, group: 'lo' }, 56);
     const nTop = Math.ceil(S.coils / 2), nBot = Math.floor(S.coils / 2), span = hp - 0.04 * R, gc = 0.015 * R;
     const nl = clamp(Math.round(S.turns / 100), 1, 10);
     const coil = (za, zb, group) => {
-      sc.tube([0, 0, za], [0, 0, zb], ci, co, { rgb: COP, amb: 0.5, group }, 64);
+      sc.tube([0, 0, za], [0, 0, zb], ci, co, { rgb: COP, amb: 0.45, spec: 0.5, shin: 30, group }, 64);
       for (let j = 1; j <= nl; j++) { const z = za + (zb - za) * j / (nl + 1); sc.circle([0, 0, z], [0, 0, 1], co + 0.002 * R, 'rgba(90,44,14,0.6)', 1, { group }, 40); }
     };
     const stack = (n, sgn, off) => {
@@ -1002,15 +1021,15 @@
     };
     stack(nBot, -1, 0);
     // ---- top half, lifted off
-    vbox([0, 0, 0], plateX, plateY, zTop + lift, zTop + tp + lift, { rgb: IRON, a: 0.88, noCull: false });
-    sc.cyl([0, 0, z1 + lift], [0, 0, zTop + lift], Rpole, { rgb: [104, 114, 109], group: 'hi' }, 40);
+    vbox([0, 0, 0], plateX, plateY, zTop + lift, zTop + tp + lift, { rgb: IRON, a: 0.9, spec: 0.18, stroke: 'rgba(255,255,255,0.08)' });
+    sc.cyl([0, 0, z1 + lift], [0, 0, zTop + lift], Rpole, { rgb: [104, 114, 109], spec: 0.35, shin: 30, group: 'hi' }, 56);
     stack(nTop, 1, lift);
     if (lift > 0.05 * R) for (const [x, y] of [[1.6 * R, 0.6 * R], [-1.6 * R, -0.6 * R], [1.6 * R, -0.6 * R], [-1.6 * R, 0.6 * R]]) sc.line([x, y, zTop], [x, y, zTop + lift], 'rgba(200,215,205,0.35)', 1, { dash: [4, 4], group: 'hi' });
     // ---- vacuum chamber wall (glassy steel) and the field between the poles
     const N = 48, Rc = g.Rch;
     for (let i = 0; i < N; i++) {
       const a0 = TAU * i / N, a1 = TAU * (i + 1) / N, am = (a0 + a1) / 2, out = [Math.cos(am), Math.sin(am), 0];
-      for (const [za, zb] of [[-z1 * 0.92, 0], [0, z1 * 0.92]]) sc.poly([[Rc * Math.cos(a0), Rc * Math.sin(a0), za], [Rc * Math.cos(a1), Rc * Math.sin(a1), za], [Rc * Math.cos(a1), Rc * Math.sin(a1), zb], [Rc * Math.cos(a0), Rc * Math.sin(a0), zb]], { rgb: [150, 170, 160], a: 0.16, out, group: grp((za + zb) / 2) });
+      for (const [za, zb] of [[-z1 * 0.92, 0], [0, z1 * 0.92]]) sc.poly([[Rc * Math.cos(a0), Rc * Math.sin(a0), za], [Rc * Math.cos(a1), Rc * Math.sin(a1), za], [Rc * Math.cos(a1), Rc * Math.sin(a1), zb], [Rc * Math.cos(a0), Rc * Math.sin(a0), zb]], { rgb: [150, 170, 160], a: 0.18, spec: 0.5, shin: 40, out, group: grp((za + zb) / 2), sn: [[Math.cos(a0), Math.sin(a0), 0], [Math.cos(a1), Math.sin(a1), 0]] });
     }
     const Bz = D.Bz, fa = clamp(0.25 + 0.15 * D.Bmag, 0.25, 0.6);
     if (Math.abs(Bz) > 1e-9) for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) {
@@ -1029,7 +1048,7 @@
       for (let k = 0; k <= 32; k++) { const a = -th + 2 * th * k / 32; shape.push([sgn * R * Math.cos(a), R * Math.sin(a)]); }
       const plus = (sgn < 0) === (pol > 0), tint = Math.abs(pol);
       const emit = plus ? '229,72,63' : '62,126,230';
-      for (const [za, zb] of [[-h, 0], [0, h]]) sc.prism(shape, za, zb, { rgb: COP, a: 0.34, noCull: true, stroke: 'rgba(240,180,120,0.35)', emit, emitA: 0.35 * tint, noTop: za < 0, noBottom: zb > 0, group: grp((za + zb) / 2), topA: 0.22 });
+      for (const [za, zb] of [[-h, 0], [0, h]]) sc.prism(shape, za, zb, { rgb: COP, a: 0.36, spec: 0.45, shin: 26, noCull: true, stroke: 'rgba(240,180,120,0.35)', emit, emitA: 0.35 * tint, noTop: za < 0, noBottom: zb > 0, group: grp((za + zb) / 2), topA: 0.22 });
     }
     // ---- the spiral and the particle, in the mid-plane
     const cur = povTrail(st), all = pov.trail.concat(cur);
@@ -2829,7 +2848,8 @@
     $('#zoomFit').addEventListener('click', () => zoomAt(1));
     bindPointer();
     v3 = CL.V3.attach($('#stageWrap'), { home: { yaw: -1.05, pitch: 0.7, dist: 1, target: [0, 0, 0], fov: 44, minDist: 0.01 }, storeKey: 'cl-3d-lab',
-      onToggle: on => { if (on) { lid = 0; if (pov.on) setRide(false); } else { staticDirty = trailDirty = true; } uiDirty = true; } });
+      full: { bar: () => $('#screen-lab .timebar'), onChange: () => layout() },
+      onToggle: on => { if (on) { lid = 0; if (pov.on) setRide(false); } else { staticDirty = trailDirty = true; } uiDirty = true; if (v3 && v3.full) layout(); } });
     // drag the corner of the view, or the divider next to it, to resize the machine view
     const resizer = axis => ({
       axis,
