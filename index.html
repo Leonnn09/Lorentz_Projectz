@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project Lorentz: a cyclotron you can build, break and ride</title>
+<meta name="description" content="Interactive cyclotron and particle physics lab: build the electromagnet, accelerate, race and collide particles, and fire them into targets.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&amp;family=Barlow+Condensed:wght@300;400;500;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil:wght@700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@700;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-skin="control">
+<div class="app" id="app">
+  <main class="screens">
+
+    <!-- ============================== HOME ============================== -->
+    <section class="screen screen-home" id="screen-home" aria-label="Home">
+      <canvas class="home-bg" id="homeBg" aria-hidden="true"></canvas>
+      <div class="home-inner">
+        <div class="home-hero">
+          <p class="home-kicker">A cyclotron you can build, break and ride</p>
+          <h1 class="lockup home-lockup"><span class="lk-row"><span class="lk-project">Project</span><span class="lk-rule" aria-hidden="true"></span><span class="lk-eq" aria-hidden="true"><i>F</i> = <i>q</i>(<i>E</i> + <i>v</i> × <i>B</i>)</span></span><span class="lk-name"><span class="lz-steel">Lorentz</span></span></h1>
+          <p class="sr-only">Named after the Lorentz force, F = q(E + v × B): the force on a charge q in an electric field E and a magnetic field B.</p>
+          <div class="nameplate"><span class="np-by">Built by</span><span class="np-names"><span>Leonel</span><span>Michael</span><span>Gabriel</span><span>Marco</span></span></div>
+          <p class="home-lede">Wind an electromagnet, then put it to work: spiral protons up to millions of volts and ride along with one, fling steel with a coil gun, smash particles and fire beams into targets. Every number comes with its physics.</p>
+          <div class="home-cta">
+            <button type="button" class="btn-go" data-go="lab">Start the cyclotron</button>
+            <button type="button" class="pbtn btn-ride-home" id="homeRide"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>Ride a proton</button>
+            <button type="button" class="pbtn" id="homeTour">Take the 1-minute tour</button>
+            <div class="home-level"><span>Detail</span>
+              <div class="seg" id="homeLevel" role="radiogroup" aria-label="Detail level">
+                <button type="button" data-value="simple" role="radio">Simple<small>new to this</small></button>
+                <button type="button" data-value="full" role="radio">Full<small>all the theory</small></button>
+              </div>
+            </div>
+            <span class="home-missions">Missions completed <b id="homeMissions">0 / 21</b></span>
+            <button type="button" class="linkbtn" id="homeIntro">Play the intro</button>
+          </div>
+        </div>
+        <div class="home-cards">
+          <button type="button" class="hcard" data-go="lab"><canvas class="hicon" data-icon="lab" aria-hidden="true"></canvas><span class="hcard-t">Cyclotron</span><span class="hcard-d">Spiral particles up to high energy. Field chaos, overload and slow-motion replay.</span></button>
+          <button type="button" class="hcard hcard-new" data-go="gauss"><canvas class="hicon" data-icon="gauss" aria-hidden="true"></canvas><span class="hcard-t">Gauss gun</span><span class="hcard-d">Coils fire one after another and fling a steel slug. Time it right or it sucks back.</span></button>
+          <button type="button" class="hcard" data-go="race"><canvas class="hicon" data-icon="race" aria-hidden="true"></canvas><span class="hcard-t">Particle race</span><span class="hcard-d">Proton against alpha against electron. Who lands first, and why?</span></button>
+          <button type="button" class="hcard" data-go="collide"><canvas class="hicon" data-icon="collide" aria-hidden="true"></canvas><span class="hcard-t">Collider</span><span class="hcard-d">Smash two particles head-on and see what new particles appear.</span></button>
+          <button type="button" class="hcard" data-go="targets"><canvas class="hicon" data-icon="targets" aria-hidden="true"></canvas><span class="hcard-t">Target range</span><span class="hcard-d">Fire beams into materials. Bragg peak, heat and damage.</span></button>
+          <button type="button" class="hcard" data-go="physics"><canvas class="hicon" data-icon="physics" aria-hidden="true"></canvas><span class="hcard-t">Physics and quiz</span><span class="hcard-d">The theory step by step, worked examples and a quiz.</span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== CYCLOTRON LAB ============================== -->
+    <section class="screen screen-lab" id="screen-lab" aria-label="Cyclotron lab" hidden>
+      <div class="lab">
+        <div class="stage" id="stage">
+          <div class="stage-wrap" id="stageWrap">
+            <canvas id="view" role="img" aria-label="Bird's-eye view of the cyclotron: the particle spirals outward between the two dees"></canvas>
+            <div class="frame-corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+            <div class="alarm" id="labAlarm" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+            <div class="letterbox" id="labLetterbox" aria-hidden="true"><div class="lb-top"><span>Replay</span><b id="lbSpeed">0.1×</b><span id="lbInfo">final orbits</span></div><div class="lb-bot"><span id="lbEnergy"></span></div></div>
+            <div class="hud-top">
+            <button type="button" class="ride-btn" id="btnRide" aria-pressed="false" title="Ride along with the particle, seen from just behind it (V)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg><span id="rideLabel">Ride the proton</span></button>
+            <div class="hud hud-status" id="hudStatus" aria-live="polite">Ready</div>
+            </div>
+            <div class="hud hud-chaos" id="hudChaos" hidden><b>Chaos mode</b><span id="hudChaosB">B ×1.00</span></div>
+            <div class="hud hud-zoom" role="group" aria-label="Zoom">
+              <button class="zbtn" id="zoomIn" type="button" aria-label="Zoom in" title="Zoom in">+</button>
+              <button class="zbtn" id="zoomOut" type="button" aria-label="Zoom out" title="Zoom out">−</button>
+              <button class="zbtn zbtn-fit" id="zoomFit" type="button" aria-label="Show whole machine" title="Show whole machine">1×</button>
+            </div>
+            <div class="hud hud-legend" id="legend">
+              <div class="leg-row"><span class="leg-sym" id="legSym">⊗</span><span id="legField">B = 1.01 T into the screen</span></div>
+              <div class="leg-row leg-vec"><span class="leg-arrow leg-v"></span>velocity <span class="leg-arrow leg-f"></span>magnetic force</div>
+              <div class="leg-scale"><div class="leg-scale-title" id="legTitle">Trail colour = kinetic energy (MeV)</div><div class="leg-bar" id="legBar"></div><div class="leg-ticks" id="legTicks"></div></div>
+            </div>
+            <div class="stopwatch" id="stopwatch" hidden>
+              <div class="sw-head" id="swHead">Stopwatch <small>(simulation time)</small></div>
+              <div class="sw-time" id="swTime">0 ns</div>
+              <div class="sw-btns"><button type="button" id="swStart">Start</button><button type="button" id="swReset">Reset</button></div>
+            </div>
+            <div class="probe" id="probe" hidden></div>
+            <div class="down" id="labDown" hidden>
+              <div class="down-card">
+                <div class="down-kicker">System down</div>
+                <h3 id="downTitle">Magnet quench</h3>
+                <p id="downText"></p>
+                <p class="down-real" id="downReal"></p>
+                <button type="button" class="btn-primary" id="btnRepair">Repair &amp; reset machine</button>
+              </div>
+            </div>
+            <button type="button" class="grip" id="stageGrip" aria-label="Resize the machine view. Drag, or use the arrow keys. Double-click or press Home to reset." title="Drag to make the machine view bigger or smaller · double-click to reset"></button>
+            <div class="size-badge" hidden></div>
+            <div class="toast" id="labToast" hidden><div class="toast-text"></div><button class="toast-close" type="button" aria-label="Close message">×</button></div>
+          </div>
+
+          <div class="timebar" role="group" aria-label="Time controls">
+            <button class="rbtn rbtn-sm" id="btnRestart" type="button" title="Restart with a new particle" aria-label="Restart">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5a7 7 0 1 1-6.93 8h2.02A5 5 0 1 0 12 7v3L7.5 6 12 2z"/></svg>
+            </button>
+            <button class="rbtn rbtn-play" id="btnPlay" type="button" title="Play / pause (Space)" aria-label="Play">
+              <svg class="ic-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+              <svg class="ic-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 5h4v14h-4zM13.5 5h4v14h-4z"/></svg>
+            </button>
+            <button class="rbtn rbtn-sm" id="btnStep" type="button" title="Step forward 1/12 revolution (→)" aria-label="Step forward">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14l9-7zM16 5h3v14h-3z"/></svg>
+            </button>
+            <div class="speeds" role="radiogroup" aria-label="Simulation speed">
+              <label><input type="radio" name="speed" value="slow"><span>Slow</span></label>
+              <label><input type="radio" name="speed" value="normal" checked><span>Normal</span></label>
+              <label><input type="radio" name="speed" value="fast"><span>Fast</span></label>
+              <label><input type="radio" name="speed" value="turbo"><span>Turbo</span></label>
+            </div>
+            <button class="pbtn" id="btnReplay" type="button" title="Replay the final orbits at one tenth speed" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V1L7 6l5 5V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/></svg>Replay 0.1×
+            </button>
+            <button class="pbtn" id="btnRecord" type="button" title="Save this run's settings and results in the notebook">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h10l4 4v14H6zM9 12h8M9 16h8M9 8h4"/></svg>Record
+            </button>
+            <button class="pbtn" id="btnSkip" type="button" title="Jump to the end of this run">Skip
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5v14l7-7zM11 5v14l7-7zM18 5h2v14h-2z"/></svg>
+            </button>
+            <div class="scrub">
+              <input type="range" id="scrub" min="0" max="1000" step="1" value="0" aria-label="Timeline">
+              <div class="scrub-meta"><span id="timeLabel">t = 0 ns</span><span id="slowdown">slowed down</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="splitter" id="labSplit" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Resize the machine view. Drag left or right, or use the arrow keys. Double-click to reset." title="Drag to make the machine view bigger or smaller · double-click to reset"></div>
+        <aside class="controls" id="controls" aria-label="Controls">
+          <div class="preset-box">
+            <label for="labPreset">Load a machine</label>
+            <select id="labPreset"></select>
+            <p class="preset-note" id="presetNote"></p>
+          </div>
+
+          <details class="acc tag-copper" open id="accMagnet">
+            <summary><span class="acc-title">Electromagnet</span><span class="acc-pill" id="accB">1.01 T</span></summary>
+            <div class="acc-body">
+              <div class="seg" id="fieldInput" role="radiogroup" aria-label="What do you want to set?">
+                <button type="button" data-value="current" role="radio">Set the current</button>
+                <button type="button" data-value="field" role="radio">Set the field B</button>
+              </div>
+              <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-coils">Number of coils</label><div class="ctl-num"><input id="n-coils" type="number" inputmode="numeric" aria-label="Number of coils"><span class="ctl-unit"></span></div></div><input id="r-coils" type="range"></div>
+              <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-turns">Turns per coil</label><div class="ctl-num"><input id="n-turns" type="number" inputmode="numeric" aria-label="Turns per coil"><span class="ctl-unit"></span></div></div><input id="r-turns" type="range"></div>
+              <div class="ctl" id="ctl-current"><div class="ctl-row"><label class="ctl-label" for="r-current">Coil current <i>I</i></label><div class="ctl-num"><input id="n-current" type="number" inputmode="decimal" aria-label="Coil current in amperes"><span class="ctl-unit"></span></div></div><input id="r-current" type="range"></div>
+              <div class="ctl" id="ctl-targetB"><div class="ctl-row"><label class="ctl-label" for="r-targetB">Magnetic field <i>B</i></label><div class="ctl-num"><input id="n-targetB" type="number" inputmode="decimal" aria-label="Magnetic field in tesla"><span class="ctl-unit"></span></div></div><input id="r-targetB" type="range"></div>
+              <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-gapCm">Pole gap <i>g</i></label><div class="ctl-num"><input id="n-gapCm" type="number" inputmode="decimal" aria-label="Pole gap in centimetres"><span class="ctl-unit"></span></div></div><input id="r-gapCm" type="range"></div>
+              <div class="dir" role="radiogroup" aria-label="Current direction seen from above">
+                <span class="dir-label">Current direction <small>(seen from above)</small></span>
+                <button type="button" id="dirCW" data-value="cw" role="radio" title="Clockwise current: field points into the screen">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a8 8 0 1 1-7.4 5h2.2A6 6 0 1 0 12 6v3L8 5l4-4z" transform="matrix(-1 0 0 1 24 0)"/></svg>
+                  <span>Clockwise<br><small>B into screen ⊗</small></span></button>
+                <button type="button" id="dirCCW" data-value="ccw" role="radio" title="Anticlockwise current: field points out of the screen">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a8 8 0 1 1-7.4 5h2.2A6 6 0 1 0 12 6v3L8 5l4-4z"/></svg>
+                  <span>Anticlockwise<br><small>B out of screen ⊙</small></span></button>
+              </div>
+              <canvas class="sideview" id="sideView" role="img" aria-label="Side view of the electromagnet: iron yoke, coils, poles and the magnetic field in the gap"></canvas>
+              <div class="magnet-out">
+                <div class="mo-main"><span class="mo-label" id="moLabel">Field in the gap</span><span class="mo-val" id="moVal">1.005 T</span><span class="chip" id="realismChip">Realistic</span></div>
+                <div class="mo-formula" id="moFormula"></div>
+              </div>
+            </div>
+          </details>
+
+          <details class="acc tag-rf" open id="accAcc2">
+            <summary><span class="acc-title">Accelerator</span><span class="acc-pill" id="accAcc">R 0.40 m</span></summary>
+            <div class="acc-body">
+              <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-R">Dee radius <i>R</i></label><div class="ctl-num"><input id="n-R" type="number" inputmode="decimal" aria-label="Dee radius in metres"><span class="ctl-unit"></span></div></div><input id="r-R" type="range"></div>
+              <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-Vkv">Dee voltage <i>V</i> (peak)</label><div class="ctl-num"><input id="n-Vkv" type="number" inputmode="decimal" aria-label="Dee voltage in kilovolts"><span class="ctl-unit"></span></div></div><input id="r-Vkv" type="range"></div>
+              <div class="field-label">Radio-frequency (RF) voltage</div>
+              <div class="seg seg-2" id="rfMode" role="radiogroup" aria-label="RF frequency mode">
+                <button type="button" data-value="fixed" role="radio">Fixed frequency<small>classic cyclotron</small></button>
+                <button type="button" data-value="fm" role="radio">Follows particle<small>synchrocyclotron</small></button>
+              </div>
+              <label class="switch"><input type="checkbox" id="relToggle" checked><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Special relativity<small>mass grows as γm near light speed</small></span></label>
+              <details class="adv" data-level="expert">
+                <summary>Advanced RF tuning</summary>
+                <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-detunePct">RF frequency offset</label><div class="ctl-num"><input id="n-detunePct" type="number" inputmode="decimal" aria-label="RF frequency offset in percent"><span class="ctl-unit"></span></div></div><input id="r-detunePct" type="range"></div>
+                <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-injDeg">Phase of first push ψ₀</label><div class="ctl-num"><input id="n-injDeg" type="number" inputmode="decimal" aria-label="Injection phase in degrees"><span class="ctl-unit"></span></div></div><input id="r-injDeg" type="range"></div>
+                <p class="hint">With relativity on, a fixed frequency slowly loses step as γ grows. Classic cyclotrons set the RF slightly <em>below</em> the starting particle frequency: the particle first arrives a little early, then relativity drags it back through the voltage peak. Example: protons with B = 1.5 T, R = 1 m and V = 200 kV stall near 11 MeV when tuned exactly, but reach about 24 MeV with an offset of −1 %.</p>
+              </details>
+            </div>
+          </details>
+
+          <details class="acc tag-particle" open id="accPartBox">
+            <summary><span class="acc-title">Particle</span><span class="acc-pill" id="accPart">p⁺</span></summary>
+            <div class="acc-body">
+              <div class="pgrid" id="particleGrid" role="radiogroup" aria-label="Particle"></div>
+              <div class="custom" id="customBox" hidden>
+                <label>Mass <span class="ctl-num"><input id="n-customMassU" type="number" step="any" inputmode="decimal" aria-label="Custom mass in atomic mass units"><span class="ctl-unit">u</span></span></label>
+                <label>Charge <span class="ctl-num"><input id="n-customZ" type="number" step="1" inputmode="numeric" aria-label="Custom charge in units of e"><span class="ctl-unit">e</span></span></label>
+              </div>
+              <p class="pnote" id="particleNote"></p>
+            </div>
+          </details>
+
+          <details class="acc tag-hazard" id="accExp">
+            <summary><span class="acc-title">Experiments</span><span class="acc-pill acc-pill-hot" id="accExpPill">off</span></summary>
+            <div class="acc-body">
+              <label class="switch"><input type="checkbox" id="chaosToggle"><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Magnetic field chaos<small>change the field while the particle flies</small></span></label>
+              <div class="chaos-box" id="chaosBox" hidden>
+                <div class="chaos-btns">
+                  <button type="button" class="btn-hot" id="btnFlip" title="Reverse the magnetic field instantly">Flip B ⇅</button>
+                  <button type="button" class="btn-hot" id="btnNudge" title="Turn the particle's velocity by about 12°">Nudge ↯</button>
+                </div>
+                <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-chaosMult">Field strength ×</label><div class="ctl-num"><input id="n-chaosMult" type="number" inputmode="decimal" aria-label="Field multiplier"><span class="ctl-unit"></span></div></div><input id="r-chaosMult" type="range"></div>
+                <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-chaosFlicker">Field flicker</label><div class="ctl-num"><input id="n-chaosFlicker" type="number" inputmode="decimal" aria-label="Random field flicker in percent"><span class="ctl-unit"></span></div></div><input id="r-chaosFlicker" type="range"></div>
+                <label class="switch switch-sm"><input type="checkbox" id="chaosAutoRF"><span class="switch-track" aria-hidden="true"></span><span class="switch-text">RF re-tunes to the particle</span></label>
+                <p class="hint">Coil current, field B and direction also act <b>live</b> in chaos mode. Changing the field without re-tuning the RF breaks the timing.</p>
+              </div>
+              <label class="switch"><input type="checkbox" id="overToggle"><span class="switch-track switch-track-hot" aria-hidden="true"></span><span class="switch-text">Overload mode<small>beyond safe limits (illustrative effects)</small></span></label>
+              <div class="over-box" id="overBox" hidden>
+                <div class="meter"><span>Coil heating</span><div class="meter-bar"><i id="mCoil"></i></div><b id="mCoilV">0 %</b></div>
+                <div class="meter"><span>Magnet quench risk</span><div class="meter-bar"><i id="mQuench"></i></div><b id="mQuenchV">0 %</b></div>
+                <div class="meter"><span>RF spark-over</span><div class="meter-bar"><i id="mRF"></i></div><b id="mRFV">0 %</b></div>
+                <p class="hint">Limits now go far past real machines. Push the coil current above about 800 A, the field above 9 T, or the dee voltage above 1000 kV and press play. Warnings grow while the machine runs.</p>
+              </div>
+            </div>
+          </details>
+
+          <details class="acc tag-tools" id="accTools">
+            <summary><span class="acc-title">Display and tools</span></summary>
+            <div class="acc-body">
+              <div class="field-label">Trail colour</div>
+              <div class="seg seg-3" id="trailMode" role="radiogroup" aria-label="Trail colour">
+                <button type="button" data-value="energy" role="radio">Energy</button>
+                <button type="button" data-value="speed" role="radio">Speed</button>
+                <button type="button" data-value="plain" role="radio">Plain</button>
+              </div>
+              <div class="seg seg-3" id="trailPal" role="radiogroup" aria-label="Palette">
+                <button type="button" data-value="rainbow" role="radio">Rainbow</button>
+                <button type="button" data-value="plasma" role="radio">Plasma</button>
+                <button type="button" data-value="ice" role="radio">Ice</button>
+              </div>
+              <div class="checks" id="showChecks">
+                <label class="ck"><input type="checkbox" data-show="vel"><span class="ck-box"></span><span class="ck-ic ck-v"></span>Velocity vector <i>v</i></label>
+                <label class="ck"><input type="checkbox" data-show="force"><span class="ck-box"></span><span class="ck-ic ck-f"></span>Magnetic force <i>F</i></label>
+                <label class="ck"><input type="checkbox" data-show="efield"><span class="ck-box"></span><span class="ck-ic ck-e"></span>Electric field in gap</label>
+                <label class="ck"><input type="checkbox" data-show="field"><span class="ck-box"></span><span class="ck-ic ck-b">⊗</span>Magnetic field symbols</label>
+                <label class="ck"><input type="checkbox" data-show="trail"><span class="ck-box"></span><span class="ck-ic ck-t"></span>Particle path</label>
+                <label class="ck"><input type="checkbox" data-show="radius"><span class="ck-box"></span><span class="ck-ic ck-r"></span>Orbit radius <i>r</i></label>
+                <label class="ck"><input type="checkbox" data-show="current"><span class="ck-box"></span><span class="ck-ic ck-i"></span>Current in coils</label>
+                <label class="ck"><input type="checkbox" data-show="labels"><span class="ck-box"></span><span class="ck-ic ck-l">Aa</span>Labels</label>
+              </div>
+              <div class="field-label">Measuring tools</div>
+              <div class="checks">
+                <label class="ck"><input type="checkbox" id="toolTape"><span class="ck-box"></span><span class="ck-ic ck-tape"></span>Measuring tape (drag the ends)</label>
+                <label class="ck"><input type="checkbox" id="toolWatch"><span class="ck-box"></span><span class="ck-ic">⏱</span>Stopwatch</label>
+                <label class="ck"><input type="checkbox" id="toolProbe"><span class="ck-box"></span><span class="ck-ic">⌖</span>Field probe (hover the machine)</label>
+              </div>
+            </div>
+          </details>
+
+          <details class="acc tag-mission">
+            <summary><span class="acc-title">Missions</span><span class="acc-pill" id="labMissionCount">0 / 6</span></summary>
+            <div class="acc-body"><ol class="missions" id="labMissions"></ol><p class="hint">Missions count with your own settings (not a loaded machine), with chaos mode off.</p></div>
+          </details>
+
+          <div class="resetall">
+            <button class="reset-btn" id="btnResetAll" type="button" aria-label="Reset all settings" title="Reset all">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5a7 7 0 1 1-6.93 8h2.02A5 5 0 1 0 12 7v3L7.5 6 12 2z"/></svg>
+            </button>
+            <span>Reset all</span>
+          </div>
+        </aside>
+
+        <section class="info" id="info" aria-label="Measurements">
+          <div class="narrate" data-level="beginner" id="labNarrate" aria-live="polite"><div class="narrate-t">What is happening</div><p class="narrate-x" id="labNarrateX"></p></div>
+          <div class="tiles">
+            <div class="tile tile-v"><div class="tile-label">Speed <i>v</i></div><div class="tile-val" id="tileV">0</div><div class="tile-sub" id="tileVsub">&nbsp;</div></div>
+            <div class="tile tile-k"><div class="tile-label">Kinetic energy <i>K</i></div><div class="tile-val" id="tileK">0</div><div class="tile-sub" id="tileKsub">&nbsp;</div></div>
+            <div class="tile tile-r"><div class="tile-label">Orbit radius <i>r</i></div><div class="tile-val" id="tileR">0</div><div class="tile-sub" id="tileRsub">&nbsp;</div></div>
+            <div class="tile tile-n"><div class="tile-label">Revolutions</div><div class="tile-val" id="tileN">0</div><div class="tile-sub" id="tileNsub">&nbsp;</div></div>
+          </div>
+          <div class="card graphs">
+            <div class="graph"><div class="graph-head"><select id="selA" aria-label="Quantity for the first graph"></select></div><canvas id="graphA" role="img" aria-label="Graph A"></canvas></div>
+            <div class="graph"><div class="graph-head"><select id="selB" aria-label="Quantity for the second graph"></select></div><canvas id="graphB" role="img" aria-label="Graph B"></canvas></div>
+            <div class="graph-foot">
+              <button class="pbtn pbtn-ghost" id="btnPin" type="button" title="Keep this run on the graphs and the screen so you can compare it with the next one">Keep this run for comparison</button>
+              <button class="pbtn pbtn-ghost" id="btnUnpin" type="button" hidden>Clear comparison</button>
+              <span class="ghost-label" id="ghostLabel"></span>
+            </div>
+          </div>
+          <div class="card data">
+            <div class="data-head">
+              <div class="tabs" role="tablist" aria-label="Data">
+                <button type="button" role="tab" data-tab="now">Particle now</button>
+                <button type="button" role="tab" data-tab="predict">Predictions</button>
+                <button type="button" role="tab" data-tab="magnet">Electromagnet</button>
+                <button type="button" role="tab" data-tab="notebook">Notebook</button>
+              </div>
+              <label class="switch switch-sm"><input type="checkbox" id="workingToggle" checked><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Show working</span></label>
+            </div>
+            <div class="data-body" id="dataBody" role="tabpanel"></div>
+            <div class="notebook" id="notebook" hidden>
+              <div class="nb-actions"><button type="button" class="pbtn" id="nbCopy">Copy table</button><button type="button" class="pbtn pbtn-ghost" id="nbClear">Clear notebook</button><span class="nb-msg" id="nbMsg"></span></div>
+              <div class="table-wrap"><table class="nb-table" id="nbTable"></table></div>
+              <p class="hint">Press <b>Record</b> under the machine to add the current run. Copy the table and paste it straight into a spreadsheet or your report.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ============================== GAUSS GUN ============================== -->
+    <section class="screen screen-gauss" id="screen-gauss" aria-label="Gauss gun" hidden>
+      <div class="arena-layout">
+        <div class="arena-main">
+          <div class="arena-wrap" id="ggWrap">
+            <canvas id="ggCanvas" role="img" aria-label="Side view of the Gauss gun: the coils or magnets, the projectile, a chronograph and the target"></canvas>
+            <div class="hud hud-status" id="ggStatus">Ready to fire</div>
+            <div class="hud hud-zoom" role="group" aria-label="Camera zoom">
+              <button class="zbtn" id="ggZoomIn" type="button" aria-label="Zoom the following camera in" title="Zoom the following camera in">+</button>
+              <button class="zbtn" id="ggZoomOut" type="button" aria-label="Zoom the following camera out" title="Zoom the following camera out">−</button>
+              <button class="zbtn zbtn-fit" id="ggZoomFit" type="button" aria-label="Normal zoom" title="Normal zoom">1×</button>
+            </div>
+            <div class="letterbox" id="ggLetterbox" aria-hidden="true"><div class="lb-top"><span>Bullet time</span><b id="ggLbSpeed">1/400 speed</b></div><div class="lb-bot"><span id="ggLbInfo"></span></div></div>
+            <button type="button" class="grip grip-y" id="ggGrip" aria-label="Resize the Gauss gun view. Drag up or down, or use the arrow keys. Double-click to reset." title="Drag to change the height of the view, double-click to reset"></button>
+            <div class="size-badge" hidden></div>
+            <div class="toast" id="ggToast" hidden><div class="toast-text"></div><button class="toast-close" type="button" aria-label="Close message">×</button></div>
+          </div>
+          <div class="arena-bar">
+            <div class="gg-firebox">
+              <button type="button" class="gg-fire" id="ggFire" title="Fire (space bar)">Fire<small>space bar</small></button>
+              <div class="gg-charge"><span id="ggChargeLabel">Ready to charge</span><div class="meter-bar"><i id="ggCharge"></i></div></div>
+            </div>
+            <div class="speeds" role="radiogroup" aria-label="Playback speed" id="ggSpeeds">
+              <label title="What you would see: over in a blink"><input type="radio" name="ggspeed" value="real"><span>Real speed</span></label>
+              <label title="40 times slower"><input type="radio" name="ggspeed" value="slow"><span>Slow motion</span></label>
+              <label title="400 times slower, the camera follows the projectile"><input type="radio" name="ggspeed" value="bullet"><span>Bullet time</span></label>
+            </div>
+            <button type="button" class="pbtn" id="ggReplay" disabled>Replay</button>
+            <label class="switch switch-sm" id="ggRapidBox"><input type="checkbox" id="ggRapid"><span class="switch-track switch-track-hot" aria-hidden="true"></span><span class="switch-text">Rapid fire</span></label>
+          </div>
+          <div class="narrate" data-level="beginner" id="ggNarrate" aria-live="polite"><div class="narrate-t">What is happening</div><p class="narrate-x" id="ggNarrateX"></p></div>
+          <div class="gg-readouts tiles">
+            <div class="tile tile-v"><div class="tile-label">Exit speed</div><div class="tile-val" id="ggTv">—</div><div class="tile-sub" id="ggTvS">&nbsp;</div></div>
+            <div class="tile tile-k"><div class="tile-label">Kinetic energy</div><div class="tile-val" id="ggTk">—</div><div class="tile-sub" id="ggTkS">&nbsp;</div></div>
+            <div class="tile tile-r"><div class="tile-label" id="ggTeL">Efficiency</div><div class="tile-val" id="ggTe">—</div><div class="tile-sub" id="ggTeS">&nbsp;</div></div>
+            <div class="tile tile-n"><div class="tile-label" id="ggTfL">Strongest pull</div><div class="tile-val" id="ggTf">—</div><div class="tile-sub" id="ggTfS">&nbsp;</div></div>
+          </div>
+          <div class="card gg-graphs">
+            <div class="gg-graph"><div class="graph-head"><select id="ggSelA" aria-label="Quantity for the first graph"></select></div><canvas id="ggGraphA" role="img" aria-label="Graph A"></canvas></div>
+            <div class="gg-graph"><div class="graph-head"><select id="ggSelB" aria-label="Quantity for the second graph"></select></div><canvas id="ggGraphB" role="img" aria-label="Graph B"></canvas></div>
+          </div>
+          <div class="card data" id="ggData">
+            <div class="data-head">
+              <div class="tabs" role="tablist" aria-label="Gauss gun data">
+                <button type="button" role="tab" data-tab="shot">This shot</button>
+                <button type="button" role="tab" data-tab="stages">Stage by stage</button>
+                <button type="button" role="tab" data-tab="coil">The coils</button>
+              </div>
+              <label class="switch switch-sm"><input type="checkbox" id="ggWorking" checked><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Show working</span></label>
+            </div>
+            <div class="data-body" id="ggDataBody" role="tabpanel"></div>
+          </div>
+        </div>
+        <aside class="side" aria-label="Gauss gun settings">
+          <div class="panel">
+            <div class="panel-title">Which Gauss gun?</div>
+            <div class="seg" id="ggType" role="radiogroup" aria-label="Type of Gauss gun">
+              <button type="button" data-value="coil" role="radio">Coil gun<small>electromagnets</small></button>
+              <button type="button" data-value="balls" role="radio">Magnets and balls<small>no electricity</small></button>
+            </div>
+            <p class="hint" id="ggTypeNote"></p>
+          </div>
+          <div id="ggCoilPanels" class="side-group">
+            <details class="acc tag-copper" open>
+              <summary><span class="acc-title">Coils</span><span class="acc-pill" id="ggCoilPill">4 × 200 turns</span></summary>
+              <div class="acc-body">
+                <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-gg-stages">Number of coils</label><div class="ctl-num"><input id="n-gg-stages" type="number" inputmode="numeric" aria-label="Number of coils"><span class="ctl-unit"></span></div></div><input id="r-gg-stages" type="range"></div>
+                <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-gg-turns">Turns per coil</label><div class="ctl-num"><input id="n-gg-turns" type="number" inputmode="numeric" aria-label="Turns per coil"><span class="ctl-unit"></span></div></div><input id="r-gg-turns" type="range"></div>
+                <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-gg-current">Current in each coil</label><div class="ctl-num"><input id="n-gg-current" type="number" inputmode="decimal" aria-label="Current in amperes"><span class="ctl-unit">A</span></div></div><input id="r-gg-current" type="range"></div>
+                <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-gg-cutoff">Switch-off point</label><div class="ctl-num"><input id="n-gg-cutoff" type="number" inputmode="numeric" aria-label="Switch-off point in percent of the coil length after the coil's middle"><span class="ctl-unit">%</span></div></div><input id="r-gg-cutoff" type="range"></div>
+                <p class="hint" id="ggCutNote"></p>
+                <label class="switch" data-level="expert"><input type="checkbox" id="ggReal"><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Current takes time to build up<small>real coils: I = I₀(1 − e<sup>−t/τ</sup>), τ = L/R</small></span></label>
+              </div>
+            </details>
+            <details class="acc tag-particle" open>
+              <summary><span class="acc-title">Projectile</span></summary>
+              <div class="acc-body">
+                <div class="pgrid" id="ggMat" role="radiogroup" aria-label="Projectile material"></div>
+                <p class="pnote" id="ggMatNote"></p>
+                <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-gg-slugCm">Slug length</label><div class="ctl-num"><input id="n-gg-slugCm" type="number" inputmode="decimal" aria-label="Slug length in centimetres"><span class="ctl-unit">cm</span></div></div><input id="r-gg-slugCm" type="range"></div>
+                <p class="hint">All slugs are 6 mm thick and slide in a plastic tube.</p>
+              </div>
+            </details>
+            <details class="acc tag-hazard" id="ggExp">
+              <summary><span class="acc-title">Experiments</span></summary>
+              <div class="acc-body">
+                <label class="switch"><input type="checkbox" id="ggGlitch"><span class="switch-track switch-track-hot" aria-hidden="true"></span><span class="switch-text">Sensor glitch<small>light gates switch off at random moments</small></span></label>
+                <label class="switch"><input type="checkbox" id="ggOver"><span class="switch-track switch-track-hot" aria-hidden="true"></span><span class="switch-text">Overload mode<small>up to 1500 A: coils heat up (illustrative failure)</small></span></label>
+                <div class="over-box" id="ggOverBox" hidden>
+                  <div class="gg-heat" id="ggHeat"></div>
+                  <button type="button" class="pbtn" id="ggRepair">Repair coils</button>
+                  <p class="hint">Each shot heats every coil by its I²R energy divided by the copper's heat capacity. Turn on <b>Rapid fire</b> to fire again and again.</p>
+                </div>
+              </div>
+            </details>
+          </div>
+          <div id="ggBallPanels" class="side-group" hidden>
+            <details class="acc tag-copper" open>
+              <summary><span class="acc-title">Magnets and balls</span></summary>
+              <div class="acc-body">
+                <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-gg-bstages">Number of magnets</label><div class="ctl-num"><input id="n-gg-bstages" type="number" inputmode="numeric" aria-label="Number of magnets"><span class="ctl-unit"></span></div></div><input id="r-gg-bstages" type="range"></div>
+                <div class="field-label">Steel ball size</div>
+                <div class="chips" id="ggBalls" role="radiogroup" aria-label="Ball size"></div>
+                <p class="pnote" id="ggBallNote"></p>
+                <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-gg-behind">Balls behind each magnet</label><div class="ctl-num"><input id="n-gg-behind" type="number" inputmode="numeric" aria-label="Balls behind each magnet"><span class="ctl-unit"></span></div></div><input id="r-gg-behind" type="range"></div>
+                <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-gg-v0">Push on the first ball</label><div class="ctl-num"><input id="n-gg-v0" type="number" inputmode="decimal" aria-label="Starting speed of the first ball in metres per second"><span class="ctl-unit">m/s</span></div></div><input id="r-gg-v0" type="range"></div>
+              </div>
+            </details>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Target</div>
+            <div class="seg seg-3" id="ggTarget" role="radiogroup" aria-label="Target">
+              <button type="button" data-value="pendulum" role="radio">Pendulum<small>measure it</small></button>
+              <button type="button" data-value="cans" role="radio">Tin cans<small>knock them</small></button>
+              <button type="button" data-value="sand" role="radio">Sand box<small>just stop it</small></button>
+            </div>
+          </div>
+          <details class="acc tag-mission"><summary><span class="acc-title">Gauss gun missions</span><span class="acc-pill" id="ggMissionCount">0 / 6</span></summary><div class="acc-body"><ol class="missions" id="ggMissions"></ol></div></details>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============================== RACE ============================== -->
+    <section class="screen screen-race" id="screen-race" aria-label="Particle race" hidden>
+      <div class="arena-layout">
+        <div class="arena-main">
+          <div class="arena-wrap" id="raceWrap">
+            <canvas id="raceCanvas" role="img" aria-label="Race arena seen from above"></canvas>
+            <div class="frame-corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+            <div class="hud hud-status" id="raceStatus">Choose racers and press Start</div>
+            <div class="countdown" id="raceCount" hidden>3</div>
+            <div class="letterbox" id="raceLetterbox" aria-hidden="true"><div class="lb-top"><span>Photo finish</span><b id="raceLbSpeed">0.1×</b><span>replay</span></div><div class="lb-bot"><span id="raceLbInfo"></span></div></div>
+            <button type="button" class="grip grip-y" id="raceGrip" aria-label="Resize the race arena. Drag up or down, or use the arrow keys. Double-click to reset." title="Drag to change the arena height · double-click to reset"></button>
+            <div class="size-badge" hidden></div>
+            <div class="toast" id="raceToast" hidden><div class="toast-text"></div><button class="toast-close" type="button" aria-label="Close message">×</button></div>
+          </div>
+          <div class="arena-bar">
+            <button type="button" class="btn-go" id="raceStart">Start race</button>
+            <button type="button" class="pbtn" id="raceReset">Reset</button>
+            <button type="button" class="pbtn" id="raceReplay" disabled>Photo-finish replay 0.1×</button>
+            <label class="switch switch-sm"><input type="checkbox" id="raceSlow"><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Slow motion</span></label>
+            <span class="arena-time" id="raceTime">t = 0 s</span>
+          </div>
+          <div class="narrate" data-level="beginner" aria-live="polite"><div class="narrate-t">What is happening</div><p class="narrate-x" id="raceNarrateX"></p></div>
+          <div class="board" id="raceBoard"></div>
+        </div>
+        <aside class="side" aria-label="Race settings">
+          <div class="panel">
+            <div class="panel-title">Race type</div>
+            <div class="seg" id="raceType" role="radiogroup" aria-label="Race type">
+              <button type="button" data-value="sprint" role="radio">Magnetic sprint<small>mass spectrometer</small></button>
+              <button type="button" data-value="gp" role="radio">Cyclotron Grand Prix<small>identical machines</small></button>
+            </div>
+            <p class="hint" id="raceTypeNote"></p>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Racers</div>
+            <div class="racers" id="racers"></div>
+          </div>
+          <div class="panel" id="sprintPanel">
+            <div class="panel-title">Starting push</div>
+            <div class="seg seg-3" id="raceStartMode" role="radiogroup" aria-label="How the racers are launched">
+              <button type="button" data-value="voltage" role="radio">Same voltage</button>
+              <button type="button" data-value="energy" role="radio">Same energy</button>
+              <button type="button" data-value="speed" role="radio">Same speed</button>
+            </div>
+            <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-raceVal" id="raceValLabel">Gate voltage</label><div class="ctl-num"><input id="n-raceVal" type="number" inputmode="decimal" aria-label="Launch value"><span class="ctl-unit" id="raceValUnit">kV</span></div></div><input id="r-raceVal" type="range"></div>
+            <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-raceB">Magnetic field <i>B</i></label><div class="ctl-num"><input id="n-raceB" type="number" inputmode="decimal" aria-label="Arena field in tesla"><span class="ctl-unit">T</span></div></div><input id="r-raceB" type="range"></div>
+            <p class="hint">B = 0 turns the arena into a straight drag race to the finish line. Negative B points out of the screen.</p>
+          </div>
+          <div class="panel" id="gpPanel" hidden>
+            <div class="panel-title">The machines (identical)</div>
+            <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-gpB">Field <i>B</i></label><div class="ctl-num"><input id="n-gpB" type="number" inputmode="decimal" aria-label="Field in tesla"><span class="ctl-unit">T</span></div></div><input id="r-gpB" type="range"></div>
+            <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-gpR">Dee radius <i>R</i></label><div class="ctl-num"><input id="n-gpR" type="number" inputmode="decimal" aria-label="Dee radius in metres"><span class="ctl-unit">m</span></div></div><input id="r-gpR" type="range"></div>
+            <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-gpV">Dee voltage <i>V</i></label><div class="ctl-num"><input id="n-gpV" type="number" inputmode="decimal" aria-label="Dee voltage in kilovolts"><span class="ctl-unit">kV</span></div></div><input id="r-gpV" type="range"></div>
+            <div class="seg seg-2" id="gpRf" role="radiogroup" aria-label="RF mode">
+              <button type="button" data-value="fixed" role="radio">Fixed frequency</button>
+              <button type="button" data-value="fm" role="radio">Follows particle</button>
+            </div>
+            <p class="hint">Each racer gets its own cyclotron with the RF tuned to it. Same field, same radius, same voltage.</p>
+          </div>
+          <label class="switch panel-switch"><input type="checkbox" id="raceRel" checked><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Special relativity</span></label>
+          <div class="panel results" id="raceResults"><div class="panel-title">Results</div><p class="hint">Run a race to see the podium and the physics behind the result.</p></div>
+          <details class="acc tag-mission"><summary><span class="acc-title">Race missions</span><span class="acc-pill" id="raceMissionCount">0 / 3</span></summary><div class="acc-body"><ol class="missions" id="raceMissions"></ol></div></details>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============================== COLLIDER ============================== -->
+    <section class="screen screen-collide" id="screen-collide" aria-label="Particle collider" hidden>
+      <div class="arena-layout">
+        <div class="arena-main">
+          <div class="arena-wrap arena-square" id="collWrap">
+            <canvas id="collCanvas" role="img" aria-label="Detector seen from above with the two beams and the particles created in the collision"></canvas>
+            <div class="frame-corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+            <div class="hud hud-status" id="collStatus">Load the beams and press Collide</div>
+            <div class="letterbox" id="collLetterbox" aria-hidden="true"><div class="lb-top"><span>Replay</span><b id="collLbSpeed">0.1×</b><span>slow motion</span></div><div class="lb-bot"><span id="collLbInfo"></span></div></div>
+            <button type="button" class="grip grip-y" id="collGrip" aria-label="Resize the detector view. Drag up or down, or use the arrow keys. Double-click to reset." title="Drag to change the detector height · double-click to reset"></button>
+            <div class="size-badge" hidden></div>
+            <div class="toast" id="collToast" hidden><div class="toast-text"></div><button class="toast-close" type="button" aria-label="Close message">×</button></div>
+          </div>
+          <div class="arena-bar">
+            <button type="button" class="btn-go btn-go-hot" id="collGo">Collide!</button>
+            <button type="button" class="pbtn" id="collReplay" disabled>Slow-motion replay</button>
+            <label class="switch switch-sm"><input type="checkbox" id="collAuto" checked><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Auto replay</span></label>
+            <label class="switch switch-sm"><input type="checkbox" id="collLabels" checked><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Track labels</span></label>
+            <button type="button" class="pbtn" id="collSurprise" title="Pick a random pair of beams and energies, then collide">Surprise me</button>
+          </div>
+          <div class="narrate" data-level="beginner" aria-live="polite"><div class="narrate-t">What is happening</div><p class="narrate-x" id="collNarrateX"></p></div>
+          <div class="coll-cards">
+            <div class="card ccard"><div class="ccard-title">Before the collision</div><div id="collBefore"></div></div>
+            <div class="card ccard"><div class="ccard-title">Collision energy</div><div id="collEnergy"></div></div>
+            <div class="card ccard ccard-wide"><div class="ccard-title">What came out</div><div id="collOut"><p class="hint">Press Collide.</p></div></div>
+          </div>
+        </div>
+        <aside class="side" aria-label="Collider settings">
+          <div class="panel">
+            <div class="panel-title">Quick experiments</div>
+            <div class="chips" id="collPresets"></div>
+          </div>
+          <div class="panel beam-a">
+            <div class="panel-title"><span class="beam-dot"></span>Beam A <small>from the left</small></div>
+            <div class="pgrid pgrid-6" id="collA"></div>
+            <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-collKa">Kinetic energy</label><div class="ctl-num"><input id="n-collKa" type="number" inputmode="decimal" aria-label="Kinetic energy of beam A in MeV"><span class="ctl-unit">MeV</span></div></div><input id="r-collKa" type="range"></div>
+          </div>
+          <div class="panel beam-b">
+            <div class="panel-title"><span class="beam-dot"></span>Beam B <small>from the right</small></div>
+            <div class="pgrid pgrid-6" id="collB"></div>
+            <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-collKb">Kinetic energy</label><div class="ctl-num"><input id="n-collKb" type="number" inputmode="decimal" aria-label="Kinetic energy of beam B in MeV"><span class="ctl-unit">MeV</span></div></div><input id="r-collKb" type="range"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Detector magnet</div>
+            <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-collB">Field <i>B</i></label><div class="ctl-num"><input id="n-collB" type="number" inputmode="decimal" aria-label="Detector field in tesla"><span class="ctl-unit">T</span></div></div><input id="r-collB" type="range"></div>
+            <p class="hint">Charged particles curl in the detector's field (r = p/|q|B), so their curvature reveals their momentum and charge sign, just like real collider detectors.</p>
+            <button type="button" class="pbtn pbtn-ghost" id="collFromLab">Use the cyclotron's beam energy</button>
+          </div>
+          <details class="acc tag-mission"><summary><span class="acc-title">Collider missions</span><span class="acc-pill" id="collMissionCount">0 / 3</span></summary><div class="acc-body"><ol class="missions" id="collMissions"></ol></div></details>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============================== TARGET RANGE ============================== -->
+    <section class="screen screen-targets" id="screen-targets" aria-label="Target range" hidden>
+      <div class="arena-layout">
+        <div class="arena-main">
+          <div class="arena-wrap arena-wide" id="tgtWrap">
+            <canvas id="tgtCanvas" role="img" aria-label="Beam entering a stack of target slabs"></canvas>
+            <div class="frame-corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+            <div class="hud hud-status" id="tgtStatus">Ready to fire</div>
+            <div class="hud hud-illus">Damage, heat glow and explosions are illustrative effects</div>
+            <button type="button" class="grip grip-y" id="tgtGrip" aria-label="Resize the target view. Drag up or down, or use the arrow keys. Double-click to reset." title="Drag to change the target view height · double-click to reset"></button>
+            <div class="size-badge" hidden></div>
+            <div class="toast" id="tgtToast" hidden><div class="toast-text"></div><button class="toast-close" type="button" aria-label="Close message">×</button></div>
+          </div>
+          <div class="arena-bar">
+            <button type="button" class="btn-go" id="tgtFire">Fire 1 particle</button>
+            <button type="button" class="pbtn" id="tgtFire10">Fire ×10</button>
+            <button type="button" class="btn-go btn-go-hot" id="tgtBeam" aria-pressed="false">Beam ON</button>
+            <div class="ctl ctl-inline"><label class="ctl-label" for="r-tgtI">Beam current</label><input id="r-tgtI" type="range"><div class="ctl-num"><input id="n-tgtI" type="number" inputmode="decimal" aria-label="Beam current in microamperes"><span class="ctl-unit">μA</span></div></div>
+            <button type="button" class="pbtn pbtn-ghost" id="tgtReset">Repair targets</button>
+          </div>
+          <div class="narrate" data-level="beginner" aria-live="polite"><div class="narrate-t">What is happening</div><p class="narrate-x" id="tgtNarrateX"></p></div>
+          <div class="card bragg"><div class="graph-head"><span class="panel-title">Energy loss along the beam (Bragg curve)</span></div><canvas id="tgtGraph" role="img" aria-label="Energy deposited per centimetre against depth"></canvas></div>
+          <div class="card tgt-card"><div class="table-wrap"><table class="tgt-table" id="tgtTable"></table></div></div>
+        </div>
+        <aside class="side" aria-label="Target settings">
+          <div class="panel">
+            <div class="panel-title">Scenarios</div>
+            <div class="chips" id="tgtPresets"></div>
+            <p class="hint" id="tgtPresetNote"></p>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Beam</div>
+            <div class="pgrid pgrid-6" id="tgtPart"></div>
+            <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-tgtK">Kinetic energy</label><div class="ctl-num"><input id="n-tgtK" type="number" inputmode="decimal" aria-label="Beam kinetic energy in MeV"><span class="ctl-unit">MeV</span></div></div><input id="r-tgtK" type="range"></div>
+            <button type="button" class="pbtn pbtn-ghost" id="tgtFromLab">Use the cyclotron's beam energy</button>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Target stack <small>(beam enters from the left)</small></div>
+            <div class="slabs" id="slabs"></div>
+            <button type="button" class="pbtn pbtn-ghost" id="slabAdd">+ Add a slab</button>
+          </div>
+          <details class="acc tag-mission"><summary><span class="acc-title">Target missions</span><span class="acc-pill" id="tgtMissionCount">0 / 3</span></summary><div class="acc-body"><ol class="missions" id="tgtMissions"></ol></div></details>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============================== PHYSICS ============================== -->
+    <section class="screen screen-physics" id="screen-physics" aria-label="The physics" hidden>
+      <div class="phys">
+        <nav class="toc" aria-label="Contents">
+          <div class="toc-title">Contents</div>
+          <button type="button" data-goto="how-to-use">How to use the lab</button>
+          <button type="button" data-goto="what">What is a cyclotron?</button>
+          <button type="button" data-goto="magnet">1 · Making the magnetic field</button>
+          <button type="button" data-goto="force">2 · Force on a moving charge</button>
+          <button type="button" data-goto="radius">3 · Circular motion</button>
+          <button type="button" data-goto="frequency">4 · The cyclotron frequency</button>
+          <button type="button" data-goto="energy">5 · Energy from the gap</button>
+          <button type="button" data-goto="maximum">6 · Maximum energy</button>
+          <button type="button" data-goto="relativity">7 · The relativistic limit</button>
+          <button type="button" data-goto="example">Worked example (your settings)</button>
+          <button type="button" data-goto="race-physics">Why racers win or tie</button>
+          <button type="button" data-goto="collide-physics">Collisions and new particles</button>
+          <button type="button" data-goto="target-physics">Stopping in matter: the Bragg peak</button>
+          <button type="button" data-goto="gauss-physics">The Gauss gun</button>
+          <button type="button" data-goto="safety">Can an accelerator explode?</button>
+          <button type="button" data-goto="real-world">Real cyclotrons</button>
+          <button type="button" data-goto="assumptions">Model assumptions</button>
+          <button type="button" data-goto="formulas">Formula sheet</button>
+          <button type="button" data-goto="quiz">Quiz</button>
+          <button type="button" data-goto="sources">Sources</button>
+        </nav>
+        <article class="doc" id="doc">
+          <header class="doc-hero">
+            <p class="kicker">The physics behind Project Lorentz</p>
+            <h1>How a magnetic field turns a small voltage into a fast particle</h1>
+            <p class="lede">A cyclotron gives a charged particle many small pushes instead of one huge one. The magnetic field is what makes this possible: it bends the particle into a circle and brings it back to the same accelerating gap again and again, always at the right moment.</p>
+            <p class="lede">The project is named after the <b>Lorentz force</b>, <i>F</i> = <i>q</i>(<i>E</i> + <i>v</i> × <i>B</i>): the force on a charge <i>q</i> in an electric field <i>E</i> and a magnetic field <i>B</i>. In a cyclotron the electric part pushes the particle faster each time it crosses the gap, and the magnetic part bends its path into a circle.</p>
+            <p class="doc-credit">Built by Leonel, Michael, Gabriel and Marco</p>
+          </header>
+
+          <section id="how-to-use" class="doc-sec">
+            <h2>How to use the lab</h2>
+            <ol class="steps">
+              <li><b>Build the magnet.</b> In <em>Electromagnet</em>, choose the number of coils, the turns per coil, the current <i>I</i> and the pole gap <i>g</i>, or switch to <em>Set the field B</em>. Or load a real machine from <em>Load a machine</em>.</li>
+              <li><b>Set up the accelerator.</b> Choose the dee radius <i>R</i> and the dee voltage <i>V</i>. Keep <em>Fixed frequency</em> for a classic cyclotron, or let the frequency follow the particle (a synchrocyclotron).</li>
+              <li><b>Pick a particle</b> and press play. Use the speed buttons, drag the timeline, or press <em>Skip to end</em>. After a run, <em>Replay 0.1×</em> shows the last orbits in slow motion with every push labelled.</li>
+              <li><b>Make it bigger.</b> Drag the edge of the copper dees (or the amber knob on it) to change the size of the machine itself: the dee radius <i>R</i>. Drag the striped corner of the view to make the picture bigger or smaller; double-click it to go back to automatic size. Scroll the mouse wheel or pinch to zoom in on any spot, and drag to move around.</li>
+              <li><b>Ride along.</b> Press <em>Ride the proton</em> (or <kbd>V</kbd>) to see the machine from just behind the particle. You hear a thump every time it crosses the gap and gets a push, and a tick at every peak of the voltage. While the two stay in step, the beat is steady: that is the cyclotron resonance. The particle's own clock is shown next to the lab clock; it runs slow by the factor γ, as relativity predicts.</li>
+              <li><b>Read the numbers.</b> The tiles show the essentials; the tabs explain every quantity. Turn on <em>Show working</em> to see each formula with your numbers in it. <em>Record</em> saves a run to the Notebook so you can copy a results table.</li>
+              <li><b>Experiment.</b> <em>Magnetic field chaos</em> lets you flip, scale or shake the field while the particle flies. <em>Overload mode</em> lets you push the machine past its limits.</li>
+              <li><b>Explore the other screens:</b> fire a Gauss gun, race particles, collide them head-on, and fire them into targets. Each screen has its own missions.</li>
+              <li><b>Simple or Full detail.</b> The switch at the bottom right changes how much you see. <em>Simple</em> hides the expert controls, adds a plain-language "What is happening" note on every screen and puts ? buttons next to the controls. <em>Full</em> shows all the theory and the working.</li>
+              <li>Keyboard: <kbd>Space</kbd> play/pause, <kbd>→</kbd> step, <kbd>V</kbd> ride along. The buttons at the bottom right switch sound, colour scheme and full screen.</li>
+            </ol>
+          </section>
+
+          <section id="what" class="doc-sec">
+            <h2>What is a cyclotron?</h2>
+            <div class="two">
+              <div>
+                <p>Ernest Lawrence and his student M. Stanley Livingston built the first working cyclotrons at Berkeley. In January 1931 Livingston's 4-inch machine accelerated hydrogen molecular ions (H₂⁺) to 80&nbsp;keV using only about 1&nbsp;kV. Within months their 11-inch machine passed 1&nbsp;MeV: 1.1&nbsp;MeV protons in August 1931, and 1.22&nbsp;MeV by January 1932. Lawrence received the 1939 Nobel Prize in Physics for the invention.</p>
+                <p>Inside a flat vacuum chamber sit two hollow, D-shaped metal electrodes called <b>dees</b>, with a narrow <b>gap</b> between them. The chamber sits between the poles of a large <b>electromagnet</b>, so a uniform magnetic field passes straight through it.</p>
+                <p>An alternating <b>radio-frequency (RF) voltage</b> is connected across the dees. Every time the particle crosses the gap, the voltage pushes it forward. Inside a dee there is no electric field, only the magnetic field, which bends the particle around a half circle and sends it back to the gap. By then the voltage has flipped, so it is pushed again. Faster means a bigger circle, so the path becomes a spiral.</p>
+              </div>
+              <figure class="fig">
+                <svg id="figTop" viewBox="0 0 320 300" role="img" aria-label="Top view diagram of a cyclotron with labelled dees, gap, ion source, spiral path and exit beam"></svg>
+                <figcaption>Top view. The field <i>B</i> points into the page (⊗). The RF source flips the dees between + and −.</figcaption>
+              </figure>
+            </div>
+          </section>
+
+          <section id="magnet" class="doc-sec">
+            <h2>1 · Making the magnetic field: the electromagnet</h2>
+            <div class="two">
+              <div>
+                <p>The field comes from copper coils wound around two iron poles. The iron carries the magnetic field around a closed loop, so almost all of the coils' effort is spent pushing the field across the air gap where the dees sit.</p>
+                <p><b>Ampère's circuital law</b> says that the magnetic field "added up" around a closed loop equals μ₀ times the current threading the loop. Taking the loop through the iron and across the gap, and treating the iron as perfect (μ<sub>r</sub> ≫ 1):</p>
+                <div class="eq"><span class="eq-main"><i>B</i> = μ₀ <i>N I</i> / <i>g</i></span>
+                  <span class="eq-key"><i>N</i> = (number of coils) × (turns per coil) · <i>I</i> = current (A) · <i>g</i> = pole gap (m) · μ₀ = 4π × 10⁻⁷ T·m/A</span></div>
+                <ul>
+                  <li>Double the turns or double the current and <i>B</i> doubles: only the product <i>NI</i> (ampere-turns) matters, because coils in series all carry the same current.</li>
+                  <li>Halve the gap and <i>B</i> doubles, but the dees need room to sit in the gap.</li>
+                  <li><b>Direction:</b> curl the fingers of your right hand the way the current flows; your thumb points along <i>B</i> (right-hand grip rule).</li>
+                  <li><b>The limit:</b> iron saturates near 2&nbsp;T. Stronger machines use superconducting coils. Our formula ignores saturation, so the lab warns you above 2&nbsp;T.</li>
+                </ul>
+                <p class="note">Check: a 1.5&nbsp;T field in a 50&nbsp;mm gap needs <i>NI</i> = <i>Bg</i>/μ₀ ≈ 59&nbsp;700 ampere-turns, the same figure CERN's accelerator school gives for this example.</p>
+              </div>
+              <figure class="fig">
+                <canvas id="figMagnet" class="sideview sideview-lg" role="img" aria-label="Cross-section of the electromagnet with your current settings"></canvas>
+                <figcaption>Side view with your settings. ⊗ = current into the page, ⊙ = out of the page. The dashed loop is the path used in Ampère's law.</figcaption>
+              </figure>
+            </div>
+          </section>
+
+          <section id="force" class="doc-sec">
+            <h2>2 · The magnetic force on a moving charge</h2>
+            <div class="two">
+              <div>
+                <p>A charge <i>q</i> moving with velocity <i>v</i> through a magnetic field <i>B</i> feels the magnetic part of the Lorentz force:</p>
+                <div class="eq"><span class="eq-main"><b>F</b> = <i>q</i> <b>v</b> × <b>B</b> &nbsp;⟹&nbsp; <i>F</i> = |<i>q</i>|<i>vB</i> sin θ</span>
+                  <span class="eq-key">In a cyclotron <b>v</b> is always at 90° to <b>B</b>, so sin θ = 1 and <i>F</i> = |<i>q</i>|<i>vB</i>.</span></div>
+                <ul>
+                  <li>The force is <b>perpendicular to both v and B</b> (Fleming's left-hand rule for a positive charge). For a negative charge the force is reversed, so electrons circle the other way.</li>
+                  <li>Because the force is always at 90° to the motion, it does <b>no work</b>: it changes the particle's direction but never its speed. That is why the speed graph is flat while the particle is inside a dee.</li>
+                </ul>
+              </div>
+              <figure class="fig">
+                <svg id="figForce" viewBox="0 0 300 240" role="img" aria-label="A positive charge moving on a circle in a field into the page, with velocity tangent to the circle and force pointing to the centre"></svg>
+                <figcaption>The force always points to the centre of the circle: it is the centripetal force.</figcaption>
+              </figure>
+            </div>
+          </section>
+
+          <section id="radius" class="doc-sec">
+            <h2>3 · Circular motion: the radius of the orbit</h2>
+            <p>The magnetic force provides exactly the centripetal force needed for circular motion:</p>
+            <div class="eq"><span class="eq-main">|<i>q</i>|<i>vB</i> = <i>mv</i>² / <i>r</i> &nbsp;⟹&nbsp; <i>r</i> = <i>mv</i> / (|<i>q</i>|<i>B</i>) = <i>p</i> / (|<i>q</i>|<i>B</i>)</span>
+              <span class="eq-key">A faster particle (bigger momentum <i>p</i>) moves on a bigger circle. A stronger field makes the circle smaller.</span></div>
+            <p>Each push at the gap increases <i>v</i>, so each half circle is a little larger than the last. Since the energy goes up by the same amount at each crossing and <i>r</i> ∝ <i>v</i> ∝ √<i>K</i>, the orbits get closer together as the particle moves outward.</p>
+          </section>
+
+          <section id="frequency" class="doc-sec">
+            <h2>4 · The cyclotron frequency: the key idea</h2>
+            <div class="eq"><span class="eq-main"><i>T</i> = 2π<i>r</i> / <i>v</i> = 2π<i>m</i> / (|<i>q</i>|<i>B</i>) &nbsp;⟹&nbsp; <i>f</i> = |<i>q</i>|<i>B</i> / (2π<i>m</i>)</span>
+              <span class="eq-key">The speed <i>v</i> cancels out. For a proton, <i>f</i> ≈ 15.2 MHz for every tesla of field.</span></div>
+            <p>A fast particle travels a bigger circle in exactly the same time as a slow particle travels a small one. So an RF voltage with a <b>fixed</b> frequency equal to <i>f</i> arrives in step with the particle at every crossing: the <b>resonance condition</b>, <i>f</i><sub>RF</sub> = <i>f</i>. Set the RF frequency offset to +2&nbsp;% and watch the particle drift out of step.</p>
+          </section>
+
+          <section id="energy" class="doc-sec">
+            <h2>5 · Energy from the gap</h2>
+            <div class="eq"><span class="eq-main">Δ<i>K</i> = |<i>q</i>|<i>V</i> cos ψ &nbsp;&nbsp;(maximum |<i>q</i>|<i>V</i> when ψ = 0)</span>
+              <span class="eq-key">ψ is the timing: how far the voltage is from its peak when the particle crosses. Two crossings per revolution give up to 2|<i>q</i>|<i>V</i> per turn.</span></div>
+            <p>A proton (charge <i>e</i>) crossing 200&nbsp;kV gains 200&nbsp;keV; an alpha particle (2<i>e</i>) gains 400&nbsp;keV. 1&nbsp;eV = 1.602 × 10⁻¹⁹ J.</p>
+          </section>
+
+          <section id="maximum" class="doc-sec">
+            <h2>6 · Maximum energy, number of turns and time</h2>
+            <div class="eq"><span class="eq-main"><i>v</i><sub>max</sub> = |<i>q</i>|<i>BR</i> / <i>m</i> &nbsp;&nbsp; <i>K</i><sub>max</sub> = <i>q</i>²<i>B</i>²<i>R</i>² / (2<i>m</i>)</span>
+              <span class="eq-key">The dee voltage <i>V</i> does not appear: <i>V</i> only decides how many turns it takes.</span></div>
+            <div class="eq"><span class="eq-main"><i>N</i> = <i>K</i><sub>max</sub> / (2|<i>q</i>|<i>V</i>) &nbsp;&nbsp; <i>t</i> = <i>N</i> × <i>T</i> = π<i>BR</i>² / (2<i>V</i>)</span>
+              <span class="eq-key">Surprise: the acceleration time does not depend on the particle's mass or charge. The Grand Prix race on the Race screen shows this.</span></div>
+            <p>Because <i>K</i><sub>max</sub> ∝ <i>q</i>²/<i>m</i>, an alpha particle (<i>q</i> = 2<i>e</i>, <i>m</i> ≈ 4 u) reaches almost the same energy as a proton in the same machine.</p>
+          </section>
+
+          <section id="relativity" class="doc-sec">
+            <h2>7 · The relativistic limit, and how engineers beat it</h2>
+            <div class="two">
+              <div>
+                <p>Near the speed of light a particle behaves as if its mass were γ<i>m</i>, with γ = 1/√(1 − <i>v</i>²/<i>c</i>²). The revolution frequency <i>f</i> = |<i>q</i>|<i>B</i>/(2πγ<i>m</i>) <b>drops</b> as the particle speeds up. With a fixed RF frequency each half-turn arrives a little later, the pushes get weaker, and finally the voltage points the wrong way.</p>
+                <p>Classic fixed-frequency cyclotrons topped out at roughly 20–25&nbsp;MeV for protons. Electrons are hopeless: γ = 2 already at 511&nbsp;keV.</p>
+                <ul>
+                  <li><b>Synchrocyclotron:</b> lower the RF frequency as the particle gains energy (the lab's <em>Follows particle</em> mode).</li>
+                  <li><b>Isochronous cyclotron:</b> make <i>B</i> grow with radius exactly as γ grows. TRIUMF and most modern medical cyclotrons work this way.</li>
+                  <li><b>Synchrotron:</b> keep the radius fixed and ramp up <i>B</i>. The LHC uses 1232 superconducting bending magnets at about 8.3&nbsp;T.</li>
+                </ul>
+              </div>
+              <figure class="fig">
+                <canvas id="figRel" class="figcanvas" role="img" aria-label="Graph of revolution frequency against kinetic energy for protons and electrons"></canvas>
+                <figcaption>Revolution frequency compared with its low-speed value, <i>f</i>/<i>f</i>₀ = 1/γ. Protons barely change below 20 MeV; electrons drop almost at once.</figcaption>
+              </figure>
+            </div>
+          </section>
+
+          <section id="example" class="doc-sec">
+            <h2>Worked example with your current settings</h2>
+            <p class="note">These numbers update when you change the lab settings.</p>
+            <div class="worked" id="worked"></div>
+          </section>
+
+          <section id="race-physics" class="doc-sec">
+            <h2>Why racers win, lose or tie</h2>
+            <p><b>Magnetic sprint.</b> Every racer is pushed through the same gate, then a uniform field bends it into a half circle back onto the detector plate. The time for half a circle is</p>
+            <div class="eq"><span class="eq-main"><i>t</i> = π<i>m</i> / (|<i>q</i>|<i>B</i>) &nbsp;&nbsp;and the landing distance is 2<i>r</i> = 2<i>mv</i> / (|<i>q</i>|<i>B</i>)</span>
+              <span class="eq-key">The speed cancels out of the time. Only the charge-to-mass ratio <i>q</i>/<i>m</i> decides the winner.</span></div>
+            <ul>
+              <li>The electron's <i>q</i>/<i>m</i> is about 1836 times the proton's, so it wins by an enormous margin.</li>
+              <li>An alpha particle has half the proton's <i>q</i>/<i>m</i>, so it takes about twice as long.</li>
+              <li>A deuteron, an alpha particle and a carbon-12 nucleus all have <i>q</i>/<i>m</i> ≈ <i>e</i>/(2 u). Their race is a photo finish decided by tiny mass differences that come from nuclear binding energy (<i>E</i> = <i>mc</i>²): carbon-12 edges out the alpha, which edges out the deuteron.</li>
+              <li>This is exactly how a <b>mass spectrometer</b> separates particles: different <i>q</i>/<i>m</i>, different landing points.</li>
+            </ul>
+            <p><b>Cyclotron Grand Prix.</b> With identical machines and the RF tuned to each racer, the time to reach the edge is <i>t</i> = π<i>BR</i>²/(2<i>V</i>) for every particle, so the race is almost a dead heat. Relativity, and fixed-frequency machines losing step, decide what is left.</p>
+          </section>
+
+          <section id="collide-physics" class="doc-sec">
+            <h2>Collisions: energy, barriers and new particles</h2>
+            <p><b>Collision energy.</b> What matters is the energy in the centre-of-mass frame, the invariant mass</p>
+            <div class="eq"><span class="eq-main"><i>E</i><sub>cm</sub> = √[(<i>E</i>₁ + <i>E</i>₂)² − (<i>p</i>₁<i>c</i> − <i>p</i>₂<i>c</i>)²]</span>
+              <span class="eq-key"><i>E</i> = <i>K</i> + <i>mc</i>² is each particle's total energy. The energy available to make new particles is <i>Q</i> = <i>E</i><sub>cm</sub> − <i>m</i>₁<i>c</i>² − <i>m</i>₂<i>c</i>².</span></div>
+            <ul>
+              <li><b>Colliders beat fixed targets.</b> Two 150 MeV protons meeting head-on give <i>Q</i> = 300 MeV. To get the same from a proton hitting a proton at rest, the beam would need about 650 MeV. The Collider screen shows this "fixed-target equivalent" for every shot.</li>
+              <li><b>The Coulomb barrier.</b> Two positive nuclei repel. Head-on, they get no closer than <i>r</i><sub>min</sub> = <i>k z</i>₁<i>z</i>₂<i>e</i>²/<i>Q</i> (with <i>ke</i>² = 1.44 MeV·fm). Unless <i>Q</i> is above about 1.44 <i>z</i>₁<i>z</i>₂ / (<i>R</i>₁ + <i>R</i>₂) MeV, with nuclear radii <i>R</i> ≈ 1.2 <i>A</i><sup>1/3</sup> fm, they bounce off without touching.</li>
+              <li><b>New particles need energy</b> (<i>E</i> = <i>mc</i>²): a neutral pion needs 135 MeV, a π⁺π⁻ pair 279 MeV, and a proton–antiproton pair 1877 MeV.</li>
+              <li><b>Annihilation.</b> An electron and a positron destroy each other and turn into gamma rays, each about 511 keV at low energy. This is the real "explosion" of matter into light, and the basis of PET scanners.</li>
+              <li>The lab's events conserve energy, momentum and charge exactly; which particles appear, and their directions, are chosen at random within those rules, as in real collisions.</li>
+            </ul>
+          </section>
+
+          <section id="target-physics" class="doc-sec">
+            <h2>Stopping in matter: the Bragg peak</h2>
+            <p>A fast charged particle loses energy mainly by knocking electrons in the material. The Bethe formula gives the energy lost per centimetre:</p>
+            <div class="eq"><span class="eq-main">−d<i>E</i>/d<i>x</i> = <i>K z</i>² (<i>Z</i>/<i>A</i>) ρ (1/β²) [½ ln(2<i>m</i><sub>e</sub><i>c</i>²β²γ²<i>W</i><sub>max</sub>/<i>I</i>²) − β²]</span>
+              <span class="eq-key"><i>K</i> = 0.307 MeV cm²/mol · <i>z</i> = particle charge · ρ, <i>Z</i>/<i>A</i>, <i>I</i> = density, electrons per nucleon mass, mean excitation energy of the material.</span></div>
+            <ul>
+              <li>The 1/β² factor means a <b>slow</b> particle loses energy <b>faster</b>. So the loss rises sharply just before the particle stops: the <b>Bragg peak</b>.</li>
+              <li>This is why proton therapy works: choose the energy so the Bragg peak lands in the tumour, sparing tissue in front and behind. Therapy accelerators deliver 70–250 MeV protons.</li>
+              <li>Alpha particles (<i>z</i> = 2) lose energy 4 times faster at the same speed, so a sheet of paper stops them. Electrons are light, scatter a lot and have no sharp Bragg peak.</li>
+              <li>The lab's ranges agree with the NIST PSTAR tables to within about 1 % for protons in water (10–250 MeV). Heat, glow and damage on the Target Range are illustrative.</li>
+            </ul>
+          </section>
+
+          <section id="gauss-physics" class="doc-sec">
+            <h2>The Gauss gun: throwing things with magnetism</h2>
+            <p>Two different machines share the name. The classic <b>Gauss rifle</b> uses permanent magnets and steel balls, with no electricity at all. A <b>coil gun</b> (also called a reluctance launcher) uses electromagnets switched on one after another. Many people call the coil gun a Gauss gun too, although strictly the magnet-and-ball device came first. The Gauss gun screen has both.</p>
+            <h3>Coil gun 1: each coil is an electromagnet</h3>
+            <div class="two">
+              <div>
+                <p>Current flowing round a coil makes a magnetic field along its axis, strongest in the middle. For a long, thin coil of length ℓ:</p>
+                <div class="eq"><span class="eq-main"><i>B</i> ≈ μ₀ <i>N I</i> / ℓ</span>
+                  <span class="eq-key">The same idea as the cyclotron's electromagnet: more turns or more current, stronger field. The lab's coils are short and fat (more turns means more layers of wire), so it uses the exact formula for the field on the axis of a thick coil.</span></div>
+                <p>The field <b>magnetises the iron slug</b>: the tiny magnetic domains inside it line up, and the slug becomes a magnet whose near end is pulled towards the coil. The magnetisation <i>M</i> can only grow up to a limit, <b>saturation</b> (about 2.15 T for soft iron). Once saturated, more current makes the coil stronger but the slug no stronger, so doubling the current gives much less than double the speed. Aluminium has no domains to line up, so this kind of gun cannot pull it.</p>
+              </div>
+              <figure class="fig">
+                <svg viewBox="0 0 320 220" role="img" aria-label="A coil with a slug entering from the left, pulled forwards, and a slug past the middle, pulled backwards">
+                  <rect x="110" y="40" width="100" height="40" fill="#b8692c" stroke="#000"/><rect x="110" y="120" width="100" height="40" fill="#b8692c" stroke="#000"/>
+                  <line x1="10" y1="88" x2="310" y2="88" stroke="rgba(220,235,240,0.5)"/><line x1="10" y1="112" x2="310" y2="112" stroke="rgba(220,235,240,0.5)"/>
+                  <rect x="44" y="92" width="60" height="16" fill="#a7b0b8" stroke="#000"/>
+                  <path d="M108 100 h36" stroke="#4fd67f" stroke-width="3"/><path d="M152 100 l-9 -6 v12 z" fill="#4fd67f"/>
+                  <rect x="196" y="92" width="60" height="16" fill="#a7b0b8" stroke="#000" opacity="0.55"/>
+                  <path d="M192 100 h-14" stroke="#ff4b3e" stroke-width="3"/><path d="M168 100 l9 -6 v12 z" fill="#ff4b3e"/>
+                  <line x1="160" y1="30" x2="160" y2="170" stroke="#ffb020" stroke-dasharray="4 4"/>
+                  <g font-family="Barlow Condensed, Arial Narrow, sans-serif" font-size="14" fill="#e5eae3">
+                    <text x="160" y="24" text-anchor="middle" fill="#ffc278">switch off here, at the middle</text>
+                    <text x="74" y="135" text-anchor="middle">slug</text><text x="226" y="135" text-anchor="middle" fill="#ff9a8a">later</text>
+                    <text x="160" y="190" text-anchor="middle">before the middle: pulled forwards</text>
+                    <text x="160" y="208" text-anchor="middle">past the middle, coil still on: pulled back</text>
+                  </g>
+                </svg>
+                <figcaption>The pull always points towards the coil's middle, where the field is strongest. That is why the timing matters.</figcaption>
+              </figure>
+            </div>
+            <h3>Coil gun 2: the force and the timing</h3>
+            <div class="eq"><span class="eq-main"><i>F</i> = μ₀ <i>M A</i> [<i>H</i>(front) − <i>H</i>(back)]</span>
+              <span class="eq-key"><i>A</i> = cross-section of the slug, <i>H</i> = the coil's field strength at the slug's two ends (<i>B</i> = μ₀<i>H</i>). The pull is biggest where the field changes fastest, as the slug enters the coil, and zero when the slug sits in the middle.</span></div>
+            <ul>
+              <li><b>Suck-back.</b> Once the slug passes the coil's middle, the same pull points backwards. A well-timed gun switches each coil off as the slug reaches the middle. In multi-stage guns each coil is switched by a sensor that tracks the slug, and the switching speed and timing accuracy of the electronics are principal design constraints.</li>
+              <li><b>Real coils are slow.</b> A coil has inductance <i>L</i>, so its current takes about τ = <i>L</i>/<i>R</i> to build up and to die away. With "Current takes time to build up" on, the best switch-off point moves before the middle.</li>
+              <li><b>Each stage adds less speed.</b> Every coil does about the same work <i>W</i> on the slug, so ½<i>mv</i>² grows by <i>W</i> per coil and the speed grows like √(number of coils). A faster slug also spends less time in each coil.</li>
+              <li><b>Efficiency is low.</b> η = ½<i>mv</i>² / <i>E</i><sub>in</sub>. Most of the energy heats the copper (<i>P</i> = <i>I</i>²<i>R</i>). A carefully optimised two-stage laboratory system reached a gross efficiency of only (1.36 ± 0.02) %. The lab's simpler model (no capacitor losses, eddy currents, hysteresis or back-EMF) gives anything from under 1 % to about 15 % depending on the settings: for a given coil, an upper estimate.</li>
+              <li><b>Speed.</b> Published reluctance coil guns mostly reach roughly 10 to 40 m/s; a research team reached 75 m/s with two stages and 130 m/s with a many-stage launcher.</li>
+            </ul>
+            <h3>The magnet-and-ball Gauss rifle</h3>
+            <p>A magnet pulls a steel ball very strongly when it is close, and hardly at all a few ball-widths away. The incoming ball falls into this deep "energy well" and arrives at full speed. The bump passes through the magnet and the balls behind it, and the last ball flies off. It sat several radii from the magnet, in a shallow part of the well, so it needs only a little energy to escape.</p>
+            <div class="eq"><span class="eq-main"><i>K</i><sub>out</sub> = η (<i>K</i><sub>in</sub> + <i>U</i>꜀) − <i>U</i>꜀ / (2<i>k</i> − 1)⁴</span>
+              <span class="eq-key"><i>U</i>꜀ = depth of the well at the magnet face, <i>k</i> = balls behind each magnet (the last one is (2<i>k</i> − 1) radii away), η = 0.9 = share of the energy passed on in the bump. The lab models the well as <i>U</i>(<i>d</i>) = −<i>U</i>꜀(<i>r</i>/<i>d</i>)⁴ and sets <i>U</i>꜀ so that one stage reproduces measured speeds.</span></div>
+            <div class="table-wrap">
+              <table class="ftable">
+                <thead><tr><th>Magnet</th><th>Steel ball</th><th>Measured exit speed, one stage</th></tr></thead>
+                <tbody>
+                  <tr><td>D44</td><td>¼ inch</td><td>6.2 mph (2.77 m/s)</td></tr>
+                  <tr><td>D66</td><td>⅜ inch</td><td>3.1 mph (1.39 m/s)</td></tr>
+                  <tr><td>D88</td><td>½ inch</td><td>2.9 mph (1.30 m/s)</td></tr>
+                  <tr><td>DAA</td><td>⅝ inch</td><td>2.6 mph (1.16 m/s)</td></tr>
+                  <tr><td>DCC</td><td>¾ inch</td><td>3.3 mph (1.48 m/s)</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <ul>
+              <li><b>Bigger is not faster:</b> the smallest ball was the fastest in K&amp;J Magnetics' high-speed camera tests, because a bigger ball's mass grows faster than the magnet's pull.</li>
+              <li><b>One ball behind the magnet is not enough.</b> It touches the magnet and is held as tightly as the incoming ball was pulled in, so the bump cannot free it.</li>
+              <li><b>Each stage adds less speed:</b> every bump wastes a share of the incoming energy, and a faster ball brings more to waste. The speed creeps towards a limit where the loss equals the gain.</li>
+              <li><b>Not free energy.</b> The energy was stored when the balls were stuck to the magnets. Pulling them off to reset the rifle takes at least as much work as the shot released.</li>
+            </ul>
+            <h3>Measuring the speed with a ballistic pendulum</h3>
+            <div class="eq"><span class="eq-main"><i>v</i> = (<i>m</i> + <i>M</i>)/<i>m</i> × √(2<i>gh</i>)</span>
+              <span class="eq-key">The projectile (mass <i>m</i>) sticks in a hanging block (mass <i>M</i>): momentum is conserved in the impact, then the block's kinetic energy turns into height <i>h</i>. The lab's chronograph measures the same speed with two light gates 5 cm apart.</span></div>
+            <p class="note">Coil heating uses <i>P</i> = <i>I</i>²<i>R</i> and the copper's heat capacity; the cooling, the burn-out at 180 °C, the smoke and the tumbling cans are illustrative.</p>
+          </section>
+
+          <section id="safety" class="doc-sec">
+            <h2>Can a particle accelerator explode?</h2>
+            <p>Not like a bomb. A particle beam contains a tiny amount of matter, and collisions between particles cannot set off a chain reaction. The real danger is <b>stored energy</b>:</p>
+            <ul>
+              <li><b>Magnets.</b> Superconducting magnets store huge energy. If one suddenly stops superconducting (a <em>quench</em>), that energy turns into heat and the liquid helium boils. On 19 September 2008 a faulty electrical connection between two LHC magnets caused an electrical arc that punctured the helium enclosure: about six tonnes of liquid helium escaped, damaging magnets and breaking their anchors in the concrete floor. The LHC was shut down for over a year of repairs.</li>
+              <li><b>Beams.</b> Each full LHC beam stores about 362 MJ, enough to melt around 500 kg of copper. That is why the beam is steered into a graphite "beam dump" when it has to be stopped.</li>
+              <li><b>High voltage and current.</b> Sparks across the gap, and coils overheating without cooling, can damage a machine. Interlocks switch things off first.</li>
+            </ul>
+            <p class="note">The explosions, shaking and flashing in Overload mode and on the Target Range are deliberately exaggerated, illustrative effects.</p>
+          </section>
+
+          <section id="real-world" class="doc-sec">
+            <h2>Real cyclotrons and what they are used for</h2>
+            <div class="facts">
+              <div class="fact"><div class="fact-n">80 keV</div><p>Livingston's 4-inch cyclotron at Berkeley, January 1931: the first working machine accelerated H₂⁺ ions with only about 1 kV.</p></div>
+              <div class="fact"><div class="fact-n">10–20 MeV</div><p>Protons for making fluorine-18, the tracer in most PET scans. McMaster University, for example, runs a 16.5 MeV machine.</p></div>
+              <div class="fact"><div class="fact-n">70–250 MeV</div><p>Protons for cancer therapy. A higher energy reaches a deeper tumour, where the protons deposit most of their dose (the Bragg peak).</p></div>
+              <div class="fact"><div class="fact-n">5.7 T</div><p>Peak field of IBA's S2C2, a superconducting synchrocyclotron about 2.5 m across that delivers 230 MeV protons for therapy after about 40,000 turns.</p></div>
+              <div class="fact"><div class="fact-n">18 m · 520 MeV</div><p>TRIUMF in Vancouver, the world's largest normal-conducting cyclotron, built with over 4000 tonnes of steel. Its particles travel about 45 km while spiralling out.</p></div>
+              <div class="fact"><div class="fact-n">8.3 T</div><p>The LHC at CERN is a synchrotron, not a cyclotron: 1232 superconducting dipole magnets keep protons of up to 7 TeV (its design energy) on a fixed 27 km ring.</p></div>
+            </div>
+          </section>
+
+          <section id="assumptions" class="doc-sec">
+            <h2>Model assumptions (what the lab simplifies)</h2>
+            <ul>
+              <li>The field <i>B</i> is uniform inside the dees. Real magnets have fringe fields and shaped variations that focus the beam vertically.</li>
+              <li><i>B</i> = μ₀<i>NI</i>/<i>g</i> treats the iron as perfect and ignores saturation above about 2 T.</li>
+              <li>The gap is treated as thin: the particle gains its energy at the centre line of the gap.</li>
+              <li>The particle starts at rest at the ion source, placed so the ideal beam's outer orbits end up centred.</li>
+              <li>Motion is 2-D, in a perfect vacuum, for one particle. Collisions are drawn in 2-D (real events are 3-D).</li>
+              <li>Stopping powers use the Bethe formula without shell and density corrections (very low energies are held constant); electrons use the Katz–Penfold range formula.</li>
+              <li>Target heating assumes the beam heats a 1 cm² patch of each slab with slow, simple cooling.</li>
+              <li>Constants: CODATA 2018; particle masses from the Particle Data Group.</li>
+            </ul>
+          </section>
+
+          <section id="formulas" class="doc-sec">
+            <h2>Formula sheet</h2>
+            <div class="table-wrap">
+              <table class="ftable">
+                <thead><tr><th>Quantity</th><th>Formula</th><th>What it tells you</th></tr></thead>
+                <tbody>
+                  <tr><td>Field of the electromagnet</td><td><i>B</i> = μ₀<i>NI</i>/<i>g</i></td><td>More ampere-turns or a smaller gap gives a stronger field.</td></tr>
+                  <tr><td>Magnetic force</td><td><i>F</i> = |<i>q</i>|<i>vB</i> sin θ</td><td>Perpendicular to <i>v</i>: bends the path, does no work.</td></tr>
+                  <tr><td>Orbit radius</td><td><i>r</i> = <i>mv</i>/(|<i>q</i>|<i>B</i>)</td><td>Faster particle → bigger circle.</td></tr>
+                  <tr><td>Frequency</td><td><i>f</i> = |<i>q</i>|<i>B</i>/(2π<i>m</i>)</td><td>Same for every orbit: the resonance condition.</td></tr>
+                  <tr><td>Energy per gap crossing</td><td>Δ<i>K</i> = |<i>q</i>|<i>V</i> cos ψ</td><td>Up to 2|<i>q</i>|<i>V</i> per revolution.</td></tr>
+                  <tr><td>Maximum kinetic energy</td><td><i>K</i><sub>max</sub> = <i>q</i>²<i>B</i>²<i>R</i>²/(2<i>m</i>)</td><td>Independent of <i>V</i>.</td></tr>
+                  <tr><td>Revolutions / time</td><td><i>N</i> = <i>K</i>/(2|<i>q</i>|<i>V</i>), <i>t</i> = π<i>BR</i>²/(2<i>V</i>)</td><td>Bigger <i>V</i> → fewer turns.</td></tr>
+                  <tr><td>Lorentz factor</td><td>γ = 1/√(1 − <i>v</i>²/<i>c</i>²) = 1 + <i>K</i>/(<i>mc</i>²)</td><td>γ ≈ 1: classical physics is fine.</td></tr>
+                  <tr><td>Half circle in a field</td><td><i>t</i> = πγ<i>m</i>/(|<i>q</i>|<i>B</i>)</td><td>Decides the magnetic sprint.</td></tr>
+                  <tr><td>Collision energy</td><td><i>E</i><sub>cm</sub>² = (<i>E</i>₁+<i>E</i>₂)² − (<i>p</i>₁<i>c</i>−<i>p</i>₂<i>c</i>)²</td><td>Energy available for new particles.</td></tr>
+                  <tr><td>Beam power</td><td><i>P</i> = <i>I</i> × <i>K</i>/<i>e</i></td><td>10 μA of 10 MeV protons deliver 100 W.</td></tr>
+                  <tr><td>Field inside a long coil</td><td><i>B</i> ≈ μ₀<i>NI</i>/ℓ</td><td>Coil gun: more turns or current, stronger pull.</td></tr>
+                  <tr><td>Pull on a magnetised slug</td><td><i>F</i> = μ₀<i>MA</i>[<i>H</i><sub>front</sub> − <i>H</i><sub>back</sub>]</td><td>Forwards before the coil's middle, backwards after it.</td></tr>
+                  <tr><td>Coil time constant</td><td>τ = <i>L</i>/<i>R</i></td><td>How long the current takes to build up.</td></tr>
+                  <tr><td>Gauss rifle stage</td><td><i>K</i><sub>out</sub> = η(<i>K</i><sub>in</sub> + <i>U</i>꜀) − <i>U</i>꜀/(2<i>k</i>−1)⁴</td><td>Needs at least two balls behind each magnet.</td></tr>
+                  <tr><td>Ballistic pendulum</td><td><i>v</i> = (<i>m</i>+<i>M</i>)/<i>m</i> × √(2<i>gh</i>)</td><td>Speed from the height of the swing.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="quiz" class="doc-sec">
+            <h2>Quiz: check your understanding</h2>
+            <div class="quiz" id="quizBox"></div>
+          </section>
+
+          <section id="sources" class="doc-sec">
+            <h2>Sources for the real-world facts</h2>
+            <ul class="sources">
+              <li><a href="https://accelconf.web.cern.ch/Cyclotrons2010/papers/mom1cio02.pdf">M. K. Craddock, “Eighty years of cyclotrons” (Cyclotrons 2010)</a>: early Berkeley machines, classical cyclotron limit</li>
+              <li><a href="https://history.aip.org/exhibits/lawrence/first.htm">American Institute of Physics, “The First Cyclotron”</a> and <a href="https://nap.nationalacademies.org/read/5859/chapter/16">E. D. Courant, biographical memoir of M. S. Livingston (National Academies Press)</a>: H₂⁺ ions at 80 keV in 1931, 1.22 MeV protons in 1932</li>
+              <li><a href="https://arxiv.org/pdf/2107.03965">“Warm magnets”, CERN Accelerator School lecture (arXiv)</a>: <i>NI</i> = <i>Bg</i>/μ₀ and iron saturation near 2 T</li>
+              <li><a href="https://uspas.fnal.gov/materials/09UNM/Unit_10_Lecture_15_Advanced_Cyclotrons.pdf">US Particle Accelerator School, advanced cyclotrons lecture</a>: relativistic limit of classical cyclotrons</li>
+              <li><a href="https://nuclearmedicineeurope.eu/wp-content/uploads/2020/04/Pictorial-view-Cyclotrons_2020_web.pdf">Nuclear Medicine Europe, “Cyclotrons for medical radionuclide production”</a></li>
+              <li><a href="https://healthphysics.mcmaster.ca/about-page/partners/mucf/">McMaster University Cyclotron Facility</a></li>
+              <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5303653">Proton therapy review article (PubMed Central)</a>: 70–250 MeV therapy energies</li>
+              <li><a href="https://cas.web.cern.ch/sites/cas.web.cern.ch/files/poster-sessions/chios-2011/pearson-poster.pdf">IBA S2C2 superconducting synchrocyclotron (CERN Accelerator School poster)</a></li>
+              <li><a href="https://fiveyearplan.triumf.ca/teams-tools/520-mev-cyclotron/index.html">TRIUMF, 520 MeV cyclotron</a> and <a href="https://www.guinnessworldrecords.com/world-records/largest-cyclotron">Guinness World Records</a></li>
+              <li><a href="https://home.cern/science/engineering/pulling-together-superconducting-electromagnets/">CERN, “Pulling together: superconducting electromagnets”</a></li>
+              <li><a href="https://home.cern/cern-releases-analysis-of-lhc-incident/">CERN, analysis of the 19 September 2008 LHC incident</a> and <a href="https://physicsworld.com/?p=18958">Physics World report</a></li>
+              <li><a href="https://accelconf.web.cern.ch/IPAC10/papers/tupea022.pdf">IPAC'10 paper on LHC beam impact</a>: 362 MJ per beam, enough to melt 500 kg of copper</li>
+              <li><a href="https://kjmagnetics.com/blog/gauss-guns">K&amp;J Magnetics, “Gauss Guns”</a>: measured single-stage exit speeds for each magnet and ball size, used to calibrate the Gauss rifle</li>
+              <li><a href="https://discovery-pp.ucl.ac.uk/1532384/1/07745986.pdf">M. J. Harris et al., “The Efficiency of a Two-Stage Reluctance Accelerator Through Pulse Shaping”, IEEE Access (2017)</a>: (1.36 ± 0.02) % gross efficiency</li>
+              <li><a href="https://www.nature.com/articles/s41598-022-27022-z">M. Einat and Y. Orbach, “A multi-stage 130 m/s reluctance linear electromagnetic launcher”, Scientific Reports 13, 218 (2023)</a>: typical coil gun speeds in the literature</li>
+              <li><a href="https://cris.iucc.ac.il/en/publications/75-ms-simulation-and-experiment-of-two-stage-reluctance-coilgun/">Y. Orbach, M. Oren and M. Einat, “75 m/s simulation and experiment of two-stage reluctance coilgun”</a></li>
+              <li><a href="https://technav.ieee.org/topic/coilguns/">IEEE TechNav, “Coilguns”</a>: operating principles, sensor timing</li>
+              <li><a href="https://demonstrations.wolfram.com/OptimizingAGaussGun/">Wolfram Demonstrations, “Optimizing a Gauss Gun”</a>, after J. A. Rabchuk, “The Gauss Rifle and Magnetic Energy”, The Physics Teacher 41, 158 (2003)</li>
+              <li><a href="https://physics.anu.edu.au/engage/outreach/_files/Gauss%20Rifle.pdf">Australian National University, Corridor Physics: “Gauss Rifle”</a> and <a href="https://en.wikipedia.org/wiki/Gauss_gun">Wikipedia, “Gauss gun”</a> (Gauss rifle versus coil gun)</li>
+              <li><a href="https://www.hep.ucl.ac.uk/pbt/wiki/Proton_ranges">UCL proton range table from NIST PSTAR</a> and <a href="https://ptcusa.com/medical-proton-beam-parameters">medical proton beam parameters</a>: validation of the lab's ranges</li>
+            </ul>
+          </section>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <nav class="navbar" aria-label="Screens">
+    <button type="button" class="brand" data-go="home" title="Home"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 26 26"><circle cx="13" cy="13" r="12" fill="#151a17" stroke="#000"/><path d="M13 13.8a1.2 1.2 0 0 1-1.2-1.2 2.4 2.4 0 0 1 2.4-2.4 3.6 3.6 0 0 1 3.6 3.6 4.8 4.8 0 0 1-4.8 4.8 6 6 0 0 1-6-6 7.2 7.2 0 0 1 7.2-7.2 8.4 8.4 0 0 1 8.4 8.4" fill="none" stroke="#c9803f" stroke-width="1.7" stroke-linecap="round"/><circle cx="21.6" cy="13.8" r="1.9" fill="#ffcf9e"/></svg></span><span>Project Lorentz</span></button>
+    <div class="nav-screens">
+      <button type="button" class="nav-btn" data-go="lab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M12 10.8a2.4 2.4 0 0 1 2.4 2.4a3.6 3.6 0 0 1-3.6 3.6a4.8 4.8 0 0 1-4.8-4.8a6 6 0 0 1 6-6a7.2 7.2 0 0 1 7.2 7.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>Cyclotron</span></button>
+      <button type="button" class="nav-btn" data-go="gauss"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h20M6 8v8M9 8v8M13 8v8M16 8v8M19.5 10.5l2 1.5-2 1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Gauss gun</span></button>
+      <button type="button" class="nav-btn" data-go="race"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V4M4 5h12l-2 3 2 3H4M14 17h6M17 14l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Race</span></button>
+      <button type="button" class="nav-btn" data-go="collide"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h6M16 12h6M12 6v2M12 16v2M7.8 7.8l1.4 1.4M14.8 14.8l1.4 1.4M16.2 7.8l-1.4 1.4M9.2 14.8l-1.4 1.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg><span>Collider</span></button>
+      <button type="button" class="nav-btn" data-go="targets"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h9M14 5v14M17 5v14M20 5v14M8 9l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Targets</span></button>
+      <button type="button" class="nav-btn" data-go="physics"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h9a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM17 7h2v13M8 9h6M8 12h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Physics</span></button>
+    </div>
+    <div class="nav-tools">
+      <div class="lvl" role="group" aria-label="Detail level" title="Simple hides the expert controls and explains everything in plain words"><button type="button" data-level="simple" aria-pressed="true">Simple</button><button type="button" data-level="full" aria-pressed="false">Full</button></div>
+      <button type="button" class="nav-icon" id="btnSound" title="Sound on/off" aria-label="Sound on or off" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="snd-on" d="M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path class="snd-off" d="M4 9h4l5-4v14l-5-4H4zM16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button type="button" class="nav-icon" id="btnSkin" title="Switch colour scheme (control room / classroom)" aria-label="Switch colour scheme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></button>
+      <button type="button" class="nav-icon" id="btnFull" title="Full screen (presentation mode)" aria-label="Full screen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button type="button" class="nav-icon" id="btnTour" title="Guided tour" aria-label="Guided tour">?</button>
+    </div>
+  </nav>
+
+  <div class="intro" id="intro" role="dialog" aria-modal="true" aria-label="Project Lorentz title" tabindex="-1" hidden>
+    <canvas class="intro-cv" id="introCv" aria-hidden="true"></canvas>
+    <div class="intro-stack" id="introStack">
+      <p class="intro-kicker">A cyclotron you can build, break and ride</p>
+      <div class="lockup intro-lockup" role="heading" aria-level="2"><span class="lk-row"><span class="lk-project">Project</span><span class="lk-rule" aria-hidden="true"></span><span class="lk-eq" aria-hidden="true"><i>F</i> = <i>q</i>(<i>E</i> + <i>v</i> × <i>B</i>)</span></span><span class="lk-name" id="introName"><span class="lz-steel">Lorentz</span><span class="lz-burn" id="introBurn" aria-hidden="true">Lorentz</span></span></div>
+      <div class="nameplate"><span class="np-by">Built by</span><span class="np-names"><span>Leonel</span><span>Michael</span><span>Gabriel</span><span>Marco</span></span></div>
+    </div>
+    <p class="intro-start" id="introStart"><span class="is-key">Press any key or click to start</span><span class="is-touch">Tap to start</span></p>
+    <button type="button" class="pbtn pbtn-ghost intro-skip" id="introSkip">Skip intro</button>
+  </div>
+
+  <div class="tour" id="tour" hidden>
+    <div class="tour-hole" id="tourHole"></div>
+    <div class="tour-card" id="tourCard" role="dialog" aria-modal="false" aria-labelledby="tourTitle">
+      <div class="tour-step" id="tourStep">1 / 8</div>
+      <h3 id="tourTitle">Welcome</h3>
+      <p id="tourText"></p>
+      <div class="tour-btns"><button type="button" class="pbtn pbtn-ghost" id="tourSkip">Skip</button><button type="button" class="pbtn pbtn-ghost" id="tourBack">Back</button><button type="button" class="btn-primary" id="tourNext">Next</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="physics.js"></script>
+<script src="core.js"></script>
+<script src="lab.js"></script>
+<script src="gauss.js"></script>
+<script src="race.js"></script>
+<script src="collide.js"></script>
+<script src="targets.js"></script>
+<script src="physics-page.js"></script>
+<script src="guide.js"></script>
+<script src="intro.js"></script>
+<script src="main.js"></script>
+</body>
+</html>
