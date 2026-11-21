@@ -8,46 +8,125 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&amp;family=Barlow+Condensed:wght@300;400;500;600&amp;display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil:wght@700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil:wght@700;800&amp;family=Kalam:wght@400;700&amp;family=Mr+Dafoe&amp;display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@700;800&amp;display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body data-skin="control">
 <div class="app" id="app">
+  <nav class="navbar" aria-label="Screens">
+    <button type="button" class="brand" data-go="home" title="Home"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 26 26"><circle cx="13" cy="13" r="12" fill="#151a17" stroke="#000"/><path d="M13 13.8a1.2 1.2 0 0 1-1.2-1.2 2.4 2.4 0 0 1 2.4-2.4 3.6 3.6 0 0 1 3.6 3.6 4.8 4.8 0 0 1-4.8 4.8 6 6 0 0 1-6-6 7.2 7.2 0 0 1 7.2-7.2 8.4 8.4 0 0 1 8.4 8.4" fill="none" stroke="#c9803f" stroke-width="1.7" stroke-linecap="round"/><circle cx="21.6" cy="13.8" r="1.9" fill="#ffcf9e"/></svg></span><span>Project Lorentz</span></button>
+    <div class="nav-screens">
+      <button type="button" class="nav-btn" data-go="lab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M12 10.8a2.4 2.4 0 0 1 2.4 2.4a3.6 3.6 0 0 1-3.6 3.6a4.8 4.8 0 0 1-4.8-4.8a6 6 0 0 1 6-6a7.2 7.2 0 0 1 7.2 7.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>Cyclotron</span></button>
+      <button type="button" class="nav-btn" data-go="gauss"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h20M6 8v8M9 8v8M13 8v8M16 8v8M19.5 10.5l2 1.5-2 1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Gauss gun</span></button>
+      <button type="button" class="nav-btn" data-go="race"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V4M4 5h12l-2 3 2 3H4M14 17h6M17 14l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Race</span></button>
+      <button type="button" class="nav-btn" data-go="collide"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h6M16 12h6M12 6v2M12 16v2M7.8 7.8l1.4 1.4M14.8 14.8l1.4 1.4M16.2 7.8l-1.4 1.4M9.2 14.8l-1.4 1.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg><span>Collider</span></button>
+      <button type="button" class="nav-btn" data-go="targets"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h9M14 5v14M17 5v14M20 5v14M8 9l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Targets</span></button>
+      <button type="button" class="nav-btn" data-go="physics"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h9a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM17 7h2v13M8 9h6M8 12h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Physics</span></button>
+    </div>
+    <div class="nav-tools">
+      <div class="lvl" role="group" aria-label="Detail level" title="Simple hides the expert controls and explains everything in plain words"><button type="button" data-level="simple" aria-pressed="true">Simple</button><button type="button" data-level="full" aria-pressed="false">Full</button></div>
+      <button type="button" class="nav-icon" id="btnSound" title="Sound on/off" aria-label="Sound on or off" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="snd-on" d="M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path class="snd-off" d="M4 9h4l5-4v14l-5-4H4zM16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div class="theme-pick">
+        <button type="button" class="nav-icon" id="btnSkin" title="Colour scheme" aria-label="Colour scheme" aria-haspopup="menu" aria-expanded="false" aria-controls="themeMenu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2a8.8 8.8 0 1 0 0 17.6c1.3 0 2-.8 2-1.8 0-1.3-1.1-1.6-1.1-2.9 0-1.1.9-1.9 2-1.9h2.2a3.9 3.9 0 0 0 3.7-3.9C20.8 6.4 16.9 3.2 12 3.2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="7.6" cy="11.2" r="1.4" fill="currentColor"/><circle cx="10.2" cy="7.4" r="1.4" fill="currentColor"/><circle cx="14.8" cy="7.6" r="1.4" fill="currentColor"/></svg></button>
+        <div class="theme-menu" id="themeMenu" role="menu" aria-label="Colour scheme" hidden></div>
+      </div>
+      <button type="button" class="nav-icon" id="btnFull" title="Full screen (presentation mode)" aria-label="Full screen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button type="button" class="nav-icon" id="btnTour" title="Guided tour" aria-label="Guided tour">?</button>
+    </div>
+  </nav>
+
   <main class="screens">
 
     <!-- ============================== HOME ============================== -->
     <section class="screen screen-home" id="screen-home" aria-label="Home">
       <canvas class="home-bg" id="homeBg" aria-hidden="true"></canvas>
       <div class="home-inner">
-        <div class="home-hero">
-          <p class="home-kicker">A cyclotron you can build, break and ride</p>
-          <h1 class="lockup home-lockup"><span class="lk-row"><span class="lk-project">Project</span><span class="lk-rule" aria-hidden="true"></span><span class="lk-eq" aria-hidden="true"><i>F</i> = <i>q</i>(<i>E</i> + <i>v</i> × <i>B</i>)</span></span><span class="lk-name"><span class="lz-steel">Lorentz</span></span></h1>
-          <p class="sr-only">Named after the Lorentz force, F = q(E + v × B): the force on a charge q in an electric field E and a magnetic field B.</p>
-          <div class="nameplate"><span class="np-by">Built by</span><span class="np-names"><span>Leonel</span><span>Michael</span><span>Gabriel</span><span>Marco</span></span></div>
-          <p class="home-lede">Wind an electromagnet, then put it to work: spiral protons up to millions of volts and ride along with one, fling steel with a coil gun, smash particles and fire beams into targets. Every number comes with its physics.</p>
-          <div class="home-cta">
+        <div class="home-top">
+          <div class="home-hero">
+            <p class="home-kicker">A cyclotron you can build, break and ride</p>
+            <h1 class="lockup home-lockup"><span class="lk-row"><span class="lk-project">Project</span><span class="lk-rule" aria-hidden="true"></span><span class="lk-eq" aria-hidden="true"><i>F</i> = <i>q</i>(<i>E</i> + <i>v</i> × <i>B</i>)</span></span><span class="lk-name"><span class="lz-steel">Lorentz</span></span></h1>
+            <p class="sr-only">Named after the Lorentz force, F = q(E + v × B): the force on a charge q in an electric field E and a magnetic field B.</p>
+            <div class="nameplate"><span class="np-by">Built by</span><span class="np-names"><span class="sig" style="--r:-4deg;--y:1px">Leonel</span><span class="sig" style="--r:2deg;--y:-1px">Michael</span><span class="sig" style="--r:-2deg;--y:2px">Gabriel</span><span class="sig" style="--r:5deg;--y:0px">Marco</span></span></div>
+            <p class="home-lede">Wind an electromagnet, then put it to work: spiral protons up to several million electron volts and ride along with one, fling steel with a coil gun, smash particles and fire beams into targets. Every number comes with its physics.</p>
+            <div class="home-cta">
             <button type="button" class="btn-go" data-go="lab">Start the cyclotron</button>
             <button type="button" class="pbtn btn-ride-home" id="homeRide"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>Ride a proton</button>
             <button type="button" class="pbtn" id="homeTour">Take the 1-minute tour</button>
-            <div class="home-level"><span>Detail</span>
+            </div>
+            <div class="home-meta">
+              <div class="home-level"><span>Detail</span>
               <div class="seg" id="homeLevel" role="radiogroup" aria-label="Detail level">
                 <button type="button" data-value="simple" role="radio">Simple<small>new to this</small></button>
                 <button type="button" data-value="full" role="radio">Full<small>all the theory</small></button>
               </div>
             </div>
-            <span class="home-missions">Missions completed <b id="homeMissions">0 / 21</b></span>
-            <button type="button" class="linkbtn" id="homeIntro">Play the intro</button>
+              <span class="home-missions">Missions completed <b id="homeMissions">0 / 21</b></span>
+              <button type="button" class="linkbtn" id="homeIntro">Play the intro</button>
+            </div>
+          </div>
+          <div class="home-stage" id="homeStage">
+            <ol class="sr-only">
+              <li>Protons start in the middle.</li>
+              <li>The gap between the two dees gives them a voltage kick every half turn.</li>
+              <li>The magnetic field, pointing into the screen, bends the path into a circle.</li>
+              <li>Each lap is bigger, but takes almost the same time.</li>
+              <li>At the edge the beam leaves for the target.</li>
+            </ol>
           </div>
         </div>
-        <div class="home-cards">
-          <button type="button" class="hcard" data-go="lab"><canvas class="hicon" data-icon="lab" aria-hidden="true"></canvas><span class="hcard-t">Cyclotron</span><span class="hcard-d">Spiral particles up to high energy. Field chaos, overload and slow-motion replay.</span></button>
-          <button type="button" class="hcard hcard-new" data-go="gauss"><canvas class="hicon" data-icon="gauss" aria-hidden="true"></canvas><span class="hcard-t">Gauss gun</span><span class="hcard-d">Coils fire one after another and fling a steel slug. Time it right or it sucks back.</span></button>
-          <button type="button" class="hcard" data-go="race"><canvas class="hicon" data-icon="race" aria-hidden="true"></canvas><span class="hcard-t">Particle race</span><span class="hcard-d">Proton against alpha against electron. Who lands first, and why?</span></button>
-          <button type="button" class="hcard" data-go="collide"><canvas class="hicon" data-icon="collide" aria-hidden="true"></canvas><span class="hcard-t">Collider</span><span class="hcard-d">Smash two particles head-on and see what new particles appear.</span></button>
-          <button type="button" class="hcard" data-go="targets"><canvas class="hicon" data-icon="targets" aria-hidden="true"></canvas><span class="hcard-t">Target range</span><span class="hcard-d">Fire beams into materials. Bragg peak, heat and damage.</span></button>
-          <button type="button" class="hcard" data-go="physics"><canvas class="hicon" data-icon="physics" aria-hidden="true"></canvas><span class="hcard-t">Physics and quiz</span><span class="hcard-d">The theory step by step, worked examples and a quiz.</span></button>
+        <div class="bench">
+          <button type="button" class="mod mod-main" data-go="lab"><span class="tape" style="--r:-3deg">start here</span><canvas class="hicon" data-icon="lab" aria-hidden="true"></canvas><span class="mod-name">Cyclotron</span><span class="mod-desc">Spiral protons up to high energy, then ride along with one. Field chaos, overload and slow-motion replay.</span></button>
+          <button type="button" class="mod" data-go="gauss"><span class="tape tape-new" style="--r:4deg">new!</span><canvas class="hicon" data-icon="gauss" aria-hidden="true"></canvas><span class="mod-name">Gauss gun</span><span class="mod-desc">Coils fire one after another and fling a steel slug.</span></button>
+          <button type="button" class="mod" data-go="race"><span class="tape" style="--r:-5deg">who wins?</span><canvas class="hicon" data-icon="race" aria-hidden="true"></canvas><span class="mod-name">Particle race</span><span class="mod-desc">Proton, alpha and electron in the same field.</span></button>
+          <button type="button" class="mod" data-go="collide"><span class="tape" style="--r:3deg">new particles</span><canvas class="hicon" data-icon="collide" aria-hidden="true"></canvas><span class="mod-name">Collider</span><span class="mod-desc">Smash two beams head-on and see what appears.</span></button>
+          <button type="button" class="mod" data-go="targets"><span class="tape" style="--r:-2deg">Bragg peak</span><canvas class="hicon" data-icon="targets" aria-hidden="true"></canvas><span class="mod-name">Target range</span><span class="mod-desc">Fire beams into materials: heat and damage.</span></button>
+          <button type="button" class="mod" data-go="physics"><span class="tape" style="--r:5deg">quiz inside</span><canvas class="hicon" data-icon="physics" aria-hidden="true"></canvas><span class="mod-name">Physics and quiz</span><span class="mod-desc">The theory step by step, then test yourself.</span></button>
         </div>
+        <section class="scale" aria-labelledby="scaleTitle">
+          <div class="scale-head">
+            <h2 id="scaleTitle">How big is a cyclotron?</h2>
+            <p>From one you could hold in your hand to one 18 metres across. Every machine below is drawn to the same scale, standing on the same floor.</p>
+          </div>
+          <div class="scale-strip" tabindex="0" aria-label="Cyclotron sizes, drawn to scale (scrolls sideways on small screens)">
+            <svg class="scale-svg" viewBox="0 0 1200 330" role="img" aria-labelledby="scaleTitle scaleDesc"><desc id="scaleDesc">Cyclotrons drawn to the same scale on one floor line: the first cyclotron of 1931 was 11 cm across; the 11-inch cyclotron of 1932 was 28 cm; the default machine in this app has 80 cm dees; the 60-inch cyclotron of 1939 was 1.5 m; a person is about 1.7 m tall; the 184-inch synchrocyclotron of 1946 was 4.7 m; and TRIUMF in Canada, from 1974, is 18 m across.</desc><path class="sc-triumf" d="M862 292.0A495 495 0 0 1 905.5 0L1200 0L1200 292.0Z"/><path class="sc-triumf-edge" d="M862 292.0A495 495 0 0 1 905.5 0"/><line class="sc-floor" x1="0" y1="292.0" x2="1200" y2="292.0"/><circle class="sc-m sc-1931" cx="64.0" cy="288.9" r="3.1"/><circle class="sc-m sc-1932" cx="138.0" cy="284.3" r="7.7"/><g class="sc-mach sc-ours"><circle class="sc-yoke" cx="228.0" cy="270.0" r="22.0"/><path class="sc-dee" d="M229.3 251.1A18.9 18.9 0 0 1 229.3 288.9Z M226.7 251.1A18.9 18.9 0 0 0 226.7 288.9Z"/></g><g class="sc-mach sc-1939"><circle class="sc-yoke" cx="352.0" cy="250.1" r="41.9"/><path class="sc-dee" d="M354.5 214.1A36.0 36.0 0 0 1 354.5 286.0Z M349.5 214.1A36.0 36.0 0 0 0 349.5 286.0Z"/></g><g class="sc-person"><circle cx="470" cy="205.6" r="6.1"/><path d="M458 216.7q12 -5 24 0l3 38q-4 2 -7 0l-2 -26 -1 66h-8l-1-38 -1 38h-8l-1-66 -2 26q-3 2 -7 0z"/></g><g class="sc-mach sc-1946"><circle class="sc-yoke" cx="672.0" cy="163.5" r="128.5"/><path class="sc-dee" d="M679.7 53.2A110.5 110.5 0 0 1 679.7 273.7Z M664.3 53.2A110.5 110.5 0 0 0 664.3 273.7Z"/></g>
+    <g class="sc-notes">
+      <text x="64" y="232" text-anchor="middle">fits in a hand</text>
+      <path class="sc-arrow" d="M66 240c2 12 1 24 -1 36m-5 -6l5 7 4 -7"/>
+      <text x="138" y="190" text-anchor="middle">first beam</text>
+      <text x="138" y="208" text-anchor="middle">over 1 MeV</text>
+      <path class="sc-arrow" d="M140 216c3 16 2 28 -1 40m-5 -6l5 7 4 -7"/>
+      <text x="228" y="160" text-anchor="middle">ours: about</text>
+      <text x="228" y="178" text-anchor="middle">7.8 MeV protons</text>
+      <path class="sc-arrow" d="M231 186c3 14 2 24 -1 36m-5 -6l5 7 4 -7"/>
+      <text x="352" y="128" text-anchor="middle">16 MeV deuterons,</text>
+      <text x="352" y="146" text-anchor="middle">and a Nobel Prize</text>
+      <text x="470" y="160" text-anchor="middle">a person,</text>
+      <text x="470" y="178" text-anchor="middle">for scale</text>
+      <text x="672" y="20" text-anchor="middle">the first synchrocyclotron:</text>
+      <text x="672" y="38" text-anchor="middle">its frequency drops as the particles speed up</text>
+      <text x="914" y="64">1974, TRIUMF in Canada:</text>
+      <text x="914" y="88">18 m across, 4,400 tonnes, 520 MeV.</text>
+      <text x="914" y="112">It does not fit on this page.</text>
+      <text x="914" y="136">Its particles travel about 45 km</text>
+      <text x="914" y="160">while they spiral out.</text>
+    </g>
+    <g class="sc-years">
+      <text x="64" y="316" text-anchor="middle">1931 · 11 cm</text>
+      <text x="138" y="316" text-anchor="middle">1932 · 28 cm</text>
+      <text x="228" y="316" text-anchor="middle">ours · 80 cm</text>
+      <text x="352" y="316" text-anchor="middle">1939 · 1.5 m</text>
+      <text x="470" y="316" text-anchor="middle">1.7 m</text>
+      <text x="672" y="316" text-anchor="middle">1946 · 4.7 m</text>
+      <text x="912" y="316">1974 · 18 m</text>
+    </g></svg>
+          </div>
+          <p class="scale-src">Dates, sizes and energies: AIP Center for History of Physics, Lawrence Berkeley National Laboratory, TRIUMF. “Ours” is this app’s default teaching cyclotron.</p>
+        </section>
+        <footer class="home-foot">
+          <span>Project Lorentz, a physics project by Leonel, Michael, Gabriel and Marco.</span>
+          <span>Named after the Lorentz force, <i>F</i> = <i>q</i>(<i>E</i> + <i>v</i> × <i>B</i>).</span>
+        </footer>
       </div>
     </section>
 
@@ -966,31 +1045,14 @@
     </section>
   </main>
 
-  <nav class="navbar" aria-label="Screens">
-    <button type="button" class="brand" data-go="home" title="Home"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 26 26"><circle cx="13" cy="13" r="12" fill="#151a17" stroke="#000"/><path d="M13 13.8a1.2 1.2 0 0 1-1.2-1.2 2.4 2.4 0 0 1 2.4-2.4 3.6 3.6 0 0 1 3.6 3.6 4.8 4.8 0 0 1-4.8 4.8 6 6 0 0 1-6-6 7.2 7.2 0 0 1 7.2-7.2 8.4 8.4 0 0 1 8.4 8.4" fill="none" stroke="#c9803f" stroke-width="1.7" stroke-linecap="round"/><circle cx="21.6" cy="13.8" r="1.9" fill="#ffcf9e"/></svg></span><span>Project Lorentz</span></button>
-    <div class="nav-screens">
-      <button type="button" class="nav-btn" data-go="lab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M12 10.8a2.4 2.4 0 0 1 2.4 2.4a3.6 3.6 0 0 1-3.6 3.6a4.8 4.8 0 0 1-4.8-4.8a6 6 0 0 1 6-6a7.2 7.2 0 0 1 7.2 7.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>Cyclotron</span></button>
-      <button type="button" class="nav-btn" data-go="gauss"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h20M6 8v8M9 8v8M13 8v8M16 8v8M19.5 10.5l2 1.5-2 1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Gauss gun</span></button>
-      <button type="button" class="nav-btn" data-go="race"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V4M4 5h12l-2 3 2 3H4M14 17h6M17 14l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Race</span></button>
-      <button type="button" class="nav-btn" data-go="collide"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h6M16 12h6M12 6v2M12 16v2M7.8 7.8l1.4 1.4M14.8 14.8l1.4 1.4M16.2 7.8l-1.4 1.4M9.2 14.8l-1.4 1.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg><span>Collider</span></button>
-      <button type="button" class="nav-btn" data-go="targets"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h9M14 5v14M17 5v14M20 5v14M8 9l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Targets</span></button>
-      <button type="button" class="nav-btn" data-go="physics"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h9a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM17 7h2v13M8 9h6M8 12h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Physics</span></button>
-    </div>
-    <div class="nav-tools">
-      <div class="lvl" role="group" aria-label="Detail level" title="Simple hides the expert controls and explains everything in plain words"><button type="button" data-level="simple" aria-pressed="true">Simple</button><button type="button" data-level="full" aria-pressed="false">Full</button></div>
-      <button type="button" class="nav-icon" id="btnSound" title="Sound on/off" aria-label="Sound on or off" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="snd-on" d="M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path class="snd-off" d="M4 9h4l5-4v14l-5-4H4zM16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      <button type="button" class="nav-icon" id="btnSkin" title="Switch colour scheme (control room / classroom)" aria-label="Switch colour scheme"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></button>
-      <button type="button" class="nav-icon" id="btnFull" title="Full screen (presentation mode)" aria-label="Full screen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      <button type="button" class="nav-icon" id="btnTour" title="Guided tour" aria-label="Guided tour">?</button>
-    </div>
-  </nav>
 
   <div class="intro" id="intro" role="dialog" aria-modal="true" aria-label="Project Lorentz title" tabindex="-1" hidden>
     <canvas class="intro-cv" id="introCv" aria-hidden="true"></canvas>
+    <div class="intro-cold" aria-hidden="true"><p class="ic ic-a">Berkeley, 1931.</p><p class="ic ic-b">The first cyclotron was small enough to hold in one hand.</p><p class="ic ic-c">This one is ours.</p></div>
     <div class="intro-stack" id="introStack">
       <p class="intro-kicker">A cyclotron you can build, break and ride</p>
       <div class="lockup intro-lockup" role="heading" aria-level="2"><span class="lk-row"><span class="lk-project">Project</span><span class="lk-rule" aria-hidden="true"></span><span class="lk-eq" aria-hidden="true"><i>F</i> = <i>q</i>(<i>E</i> + <i>v</i> × <i>B</i>)</span></span><span class="lk-name" id="introName"><span class="lz-steel">Lorentz</span><span class="lz-burn" id="introBurn" aria-hidden="true">Lorentz</span></span></div>
-      <div class="nameplate"><span class="np-by">Built by</span><span class="np-names"><span>Leonel</span><span>Michael</span><span>Gabriel</span><span>Marco</span></span></div>
+      <div class="nameplate"><span class="np-by">Built by</span><span class="np-names"><span class="sig" style="--r:-4deg;--y:1px;--i:0">Leonel</span><span class="sig" style="--r:2deg;--y:-1px;--i:1">Michael</span><span class="sig" style="--r:-2deg;--y:2px;--i:2">Gabriel</span><span class="sig" style="--r:5deg;--y:0px;--i:3">Marco</span></span></div>
     </div>
     <p class="intro-start" id="introStart"><span class="is-key">Press any key or click to start</span><span class="is-touch">Tap to start</span></p>
     <button type="button" class="pbtn pbtn-ghost intro-skip" id="introSkip">Skip intro</button>

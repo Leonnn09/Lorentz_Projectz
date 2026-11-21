@@ -29,22 +29,59 @@
     if (!home.cv) return;
     const scr = $('#screen-home'), sr = scr.getBoundingClientRect();
     home.W = sr.width || window.innerWidth; home.H = sr.height || window.innerHeight;
-    const cards = $('.home-cards'), hero = $('.home-hero'), inner = $('.home-inner');
-    if (cards && hero && inner) {
-      home.cardsTop = cards.getBoundingClientRect().top - sr.top + scr.scrollTop;
-      home.heroRight = hero.getBoundingClientRect().right - sr.left;
-      home.innerRight = inner.getBoundingClientRect().right - sr.left - 28;
-    }
+    const st = $('#homeStage');
+    if (st) { const r = st.getBoundingClientRect(); home.stage = { x: r.left - sr.left, y: r.top - sr.top + scr.scrollTop, w: r.width, h: r.height }; }
     home.statKey = '';
     for (const ic of home.icons) { const r = ic.cv.getBoundingClientRect(); ic.w = r.width; ic.h = r.height; }
   }
   const HALF = 16, HALF_T = 0.42, EXIT_T = 1.4;          // half-turns per run, seconds per half-turn, extraction time
   function heroGeom() {
-    const W = home.W, H = home.H, wide = W >= 980 && home.cardsTop > 200;
+    const W = home.W, H = home.H, st = home.stage, wide = W >= 980 && st && st.w > 280 && st.h > 240;
     if (!wide) { const R0 = Math.min(W * 0.4, H * 0.28); return { W, H, wide, R0, cx: W * 0.62, cy: H * 0.3, bottom: H }; }
-    const top = 14, bottom = home.cardsTop - 12;
-    const R0 = Math.max(80, Math.min((bottom - top) / 2.76, (home.innerRight - home.heroRight - 24) / 2.76));
-    return { W, H, wide, R0, cx: (home.heroRight + home.innerRight) / 2 + 12, cy: (top + bottom) / 2, bottom };
+    // the machine sits on the left of the stage; the handwritten notes get a column on its right,
+    // which may run past the stage into the free margin at the screen edge
+    const nw = clamp(st.w * 0.36, 190, 250), spare = Math.max(0, W - (st.x + st.w) - 14);
+    const mw = st.w - Math.max(0, nw - spare);
+    const R0 = Math.max(80, Math.min(mw / 2.9, st.h / 2.84));
+    const cx = st.x + Math.min(mw / 2, R0 * 1.45 + 4), cy = st.y + st.h / 2;
+    return { W, H, wide, R0, cx, cy, bottom: st.y + st.h, nx: cx + R0 * 1.36 + 30, nw: Math.min(nw, W - 12 - (cx + R0 * 1.36 + 30)) };
+  }
+  /* the team's notes on the machine: handwriting with an ink arrow to the part it explains */
+  const NOTES = [
+    { lines: ['the gap: a voltage kick', 'every half turn'], y: -1.02, at: g => [g.cx + g.R0 * 0.012, g.cy - g.R0 * 0.9] },
+    { lines: ['B points into the screen:', 'it bends the path into a circle'], y: -0.4, at: g => [g.cx + g.R0 * 0.56, g.cy - g.R0 * 0.5] },
+    { lines: ['each lap is bigger, yet takes', 'almost the same time', 'f = qB / 2πm'], y: 0.3, at: g => [g.cx + g.R0 * 0.9, g.cy + g.R0 * 0.2] },
+    { lines: ['copper coils:', 'the electromagnet'], y: 1.02, at: g => [g.cx + g.R0 * 1.17 * Math.cos(0.72), g.cy + g.R0 * 1.17 * Math.sin(0.72)] },
+  ];
+  function drawNotes(ctx, g) {
+    if (!g.wide || !g.nw || g.nw < 150) return;
+    const ink = skin.c('--note-ink'), t = home.noteT, fs = clamp(g.R0 * 0.095, 14.5, 17), lh = fs * 1.18;
+    ctx.save();
+    ctx.font = `400 ${fs}px Kalam, "Segoe Print", "Comic Sans MS", cursive`; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    NOTES.forEach((n, i) => {
+      const p = reduceMotion ? 1 : clamp((t - 0.5 - i * 0.55) / 0.9, 0, 1);
+      if (p <= 0) return;
+      const tx = g.nx, ty = g.cy + n.y * g.R0 - (n.lines.length - 1) * lh / 2;
+      const [ax, ay] = n.at(g);
+      // ink arrow: a gentle curve from the note to the part, then a two-stroke arrow head
+      const sx = tx - 8, sy = ty - fs * 0.32, mx = (sx + ax) / 2, my = (sy + ay) / 2 - 18 + i * 6;
+      const len = Math.hypot(ax - sx, ay - sy) * 1.12, ap = clamp(p * 1.4, 0, 1);
+      ctx.strokeStyle = hexA(ink, 0.82); ctx.lineWidth = 1.5;
+      ctx.setLineDash([len * ap, len]); ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(mx, my, ax, ay); ctx.stroke(); ctx.setLineDash([]);
+      if (ap >= 1) {
+        const ang = Math.atan2(ay - my, ax - mx), hl = 9;
+        ctx.beginPath(); ctx.moveTo(ax - Math.cos(ang - 0.42) * hl, ay - Math.sin(ang - 0.42) * hl); ctx.lineTo(ax, ay); ctx.lineTo(ax - Math.cos(ang + 0.38) * hl * 0.9, ay - Math.sin(ang + 0.38) * hl * 0.9); ctx.stroke();
+        ctx.fillStyle = hexA(ink, 0.9); ctx.beginPath(); ctx.arc(ax, ay, 2.2, 0, TAU); ctx.fill();
+      }
+      // the words appear as if written, left to right
+      const wmax = Math.max(...n.lines.map(l => ctx.measureText(l).width));
+      ctx.save(); ctx.beginPath(); ctx.rect(tx - 4, ty - fs * 1.2, (wmax + 12) * clamp((p - 0.25) / 0.75, 0, 1), lh * n.lines.length + fs * 0.8); ctx.clip();
+      ctx.fillStyle = ink; ctx.shadowColor = skin.c('--note-halo'); ctx.shadowBlur = 4;
+      n.lines.forEach((l, k) => ctx.fillText(l, tx + (k === 2 ? 6 : 0), ty + k * lh));
+      ctx.restore();
+    });
+    ctx.restore();
   }
   function heroStatic(g) {                                // iron yoke, coil ring and vacuum chamber, drawn once per size
     const key = `${g.W}x${g.H}`; if (home.statKey === key && home.stat) return home.stat;
@@ -91,13 +128,20 @@
     home.stat = { c, pad, size, dees, w, h }; home.statKey = key;
     return home.stat;
   }
-  function spiral(g) {                                   // alternating half circles, radius grows as √(number of pushes)
-    const R = g.R0 * 0.95, out = []; let y = 0, dir = 1;
-    const radii = Array.from({ length: HALF }, (_, k) => R * Math.sqrt((k + 1) / HALF));
-    const centres = []; for (let k = 0; k < HALF; k++) { const c = y - dir * radii[k]; centres.push(c); y = c - dir * radii[k]; dir = -dir; }
-    const shift = (centres[HALF - 1] + centres[HALF - 2]) / 2;
-    dir = 1;
-    for (let k = 0; k < HALF; k++) { out.push({ r: radii[k], cy: centres[k] - shift, a0: dir > 0 ? -Math.PI / 2 : Math.PI / 2, dir }); dir = -dir; }
+  // alternating half circles whose radius grows as √(number of pushes). A proton with B into the screen goes round
+  // anticlockwise: even half-turns run up through the right dee (bottom crossing to top), odd ones down through the left dee.
+  // Each half-turn starts just after a gap crossing, while the dee it came from is + and the one it enters is −.
+  function spiral(g) {
+    const Rs = g.R0 * 0.95;
+    const radii = Array.from({ length: HALF }, (_, k) => Rs * Math.sqrt((k + 1) / HALF)), out = [];
+    let y = 0;
+    for (let k = 0; k < HALF; k++) {
+      const up = k % 2 === 0, r = radii[k], c = up ? y - r : y + r;
+      out.push({ r, cy: c, a0: up ? Math.PI / 2 : -Math.PI / 2 });
+      y = up ? c - r : c + r;
+    }
+    const shift = (out[HALF - 1].cy + out[HALF - 2].cy) / 2;   // the last orbit is centred on the machine
+    for (const s of out) s.cy -= shift;
     return out;
   }
   function drawHome(dt) {
@@ -120,22 +164,22 @@
     ctx.restore();
     // trail of the spiral so far
     ctx.lineCap = 'round';
-    const nDone = Math.min(HALF, k), pos = (s, f) => { const an = s.a0 + s.dir * Math.PI * f; return [cx + Math.cos(an) * s.r, cy + s.cy + Math.sin(an) * s.r]; };
+    const nDone = Math.min(HALF, k), pos = (s, f) => { const an = s.a0 - Math.PI * f; return [cx + Math.cos(an) * s.r, cy + s.cy + Math.sin(an) * s.r]; };
     for (let i = 0; i <= Math.min(nDone, HALF - 1); i++) {
       const s = sp[i], f = i < nDone ? 1 : frac;
       ctx.strokeStyle = pal[Math.round(i / (HALF - 1) * 63)]; ctx.lineWidth = 2.2; ctx.globalAlpha = (g.wide ? 1 : 0.42) * 0.9;
-      ctx.beginPath(); ctx.arc(cx, cy + s.cy, s.r, s.a0, s.a0 + s.dir * Math.PI * f, s.dir < 0); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy + s.cy, s.r, s.a0, s.a0 - Math.PI * f, true); ctx.stroke();
     }
     ctx.globalAlpha = g.wide ? 1 : 0.42;
     let px, py;
     if (k < HALF) { [px, py] = pos(sp[k], frac); if (frac < 0.06 && k > 0 && !reduceMotion) for (let i = 0; i < 2; i++) home.sparks.push({ x: cx, y: py, vx: (Math.random() - 0.5) * 90, vy: (Math.random() - 0.5) * 90, life: 0.35 }); }
     else {
       const s = sp[HALF - 1], [ex, ey] = pos(s, 1), te = tc - HALF * HALF_T, L = Math.min(1, te / EXIT_T) * (W - ex + 40);
-      const dx = -s.dir, gr = ctx.createLinearGradient(ex, ey, ex + dx * L, ey);
+      const dx = (HALF - 1) % 2 ? 1 : -1, gr = ctx.createLinearGradient(ex, ey, ex + dx * L, ey);   // leaves along the tangent: rightwards at the bottom
       gr.addColorStop(0, 'rgba(255,90,60,0.9)'); gr.addColorStop(1, 'rgba(255,210,140,0.9)');
       ctx.strokeStyle = gr; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + dx * L, ey); ctx.stroke();
       px = ex + dx * L; py = ey;
-      for (let i = 0; i < HALF; i++) { const s2 = sp[i]; ctx.strokeStyle = pal[Math.round(i / (HALF - 1) * 63)]; ctx.lineWidth = 2.2; ctx.globalAlpha = (g.wide ? 1 : 0.42) * Math.max(0, 1 - te / (EXIT_T + 0.6)); ctx.beginPath(); ctx.arc(cx, cy + s2.cy, s2.r, s2.a0, s2.a0 + s2.dir * Math.PI, s2.dir < 0); ctx.stroke(); }
+      for (let i = 0; i < HALF; i++) { const s2 = sp[i]; ctx.strokeStyle = pal[Math.round(i / (HALF - 1) * 63)]; ctx.lineWidth = 2.2; ctx.globalAlpha = (g.wide ? 1 : 0.42) * Math.max(0, 1 - te / (EXIT_T + 0.6)); ctx.beginPath(); ctx.arc(cx, cy + s2.cy, s2.r, s2.a0, s2.a0 - Math.PI, true); ctx.stroke(); }
       ctx.globalAlpha = g.wide ? 1 : 0.42;
     }
     if (px > -20 && px < W + 20) {
@@ -145,10 +189,9 @@
     }
     for (const s of home.sparks) { s.life -= dt; s.x += s.vx * dt; s.y += s.vy * dt; ctx.strokeStyle = `rgba(255,210,140,${Math.max(0, s.life / 0.35)})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x - s.vx * 0.04, s.y - s.vy * 0.04); ctx.stroke(); }
     home.sparks = home.sparks.filter(s => s.life > 0);
-    if (g.wide && cy + g.R0 * 1.36 + 30 < g.bottom + 10) {
-      ctx.font = '600 15px "Barlow Condensed", "Arial Narrow", sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(214,224,216,0.55)';
-      ctx.fillText('the same time for every lap: f = qB / 2πm', cx, cy + g.R0 * 1.36 + 22);
-    }
+    ctx.globalAlpha = 1;
+    if (!(CL.intro && CL.intro.on)) home.noteT = (home.noteT || 0) + dt;   // the notes are written once the title sequence is over
+    drawNotes(ctx, g);
     ctx.restore();
   }
   function iconBg(ctx, W, H) { const g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, W * 0.7); g.addColorStop(0, '#131c17'); g.addColorStop(1, '#070a08'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
@@ -162,6 +205,7 @@
       ctx.fillStyle = 'rgba(201,128,63,0.12)'; ctx.strokeStyle = 'rgba(232,168,106,0.85)'; ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.arc(cx, cy, s * 0.42, -Math.PI / 2 + 0.06, Math.PI / 2 - 0.06); ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.beginPath(); ctx.arc(cx, cy, s * 0.42, Math.PI / 2 + 0.06, 3 * Math.PI / 2 - 0.06); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.save(); ctx.translate(2 * cx, 0); ctx.scale(-1, 1);        // mirrored: anticlockwise, like a proton with B into the screen
       const n = 9, prog = (t * 0.35) % 1, total = n * prog, pal = CL.palette('rainbow');
       let y = 0, dir = 1;
       for (let k = 0; k < n && k < total; k++) {
@@ -172,6 +216,7 @@
         if (frac < 1 || k === n - 1) { const a = a0 + Math.PI * frac, hx = cx + Math.cos(a) * r, hy = cy + c + Math.sin(a) * r; const gl = ctx.createRadialGradient(hx, hy, 0, hx, hy, 8); gl.addColorStop(0, '#fff'); gl.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(hx, hy, 8, 0, TAU); ctx.fill(); }
         y = c - dir * r; dir = -dir;
       }
+      ctx.restore();
     } else if (ic.kind === 'gauss') {
       const y = H * 0.55, n = 4, x0 = W * 0.08, x1 = W * 0.72, cw = W * 0.09, ph = (t * 0.55) % 1.6;
       ctx.strokeStyle = 'rgba(220,235,240,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x0, y - 4); ctx.lineTo(x1, y - 4); ctx.moveTo(x0, y + 4); ctx.lineTo(x1, y + 4); ctx.stroke();
@@ -266,7 +311,7 @@
   function bindNav() {
     for (const b of $$('[data-go]')) b.addEventListener('click', () => { audio.unlock(); showScreen(b.dataset.go, true); });
     $('#btnSound').addEventListener('click', () => { audio.unlock(); audio.setMuted(!audio.muted); syncSound(); if (!audio.muted) audio.beep(660, 0.08); });
-    $('#btnSkin').addEventListener('click', () => { skin.apply(skin.name === 'control' ? 'classroom' : 'control'); });
+    themeMenu();
     $('#btnFull').addEventListener('click', () => {
       try {
         if (document.fullscreenElement) document.exitFullscreen();
@@ -293,6 +338,25 @@
     CL.bus.on('muted', syncSound);
   }
 
+  /* ---------- colour scheme menu ---------- */
+  function themeMenu() {
+    const btn = $('#btnSkin'), menu = $('#themeMenu');
+    menu.innerHTML = skin.list.map(k => `<button type="button" role="menuitemradio" data-skin="${k.id}"><span class="tm-sw" aria-hidden="true">${k.sw.map(c => `<i style="background:${c}"></i>`).join('')}</span><span class="tm-t">${k.label}<small>${k.note}</small></span></button>`).join('');
+    const sync = () => { for (const b of $$('button', menu)) b.setAttribute('aria-checked', String(b.dataset.skin === skin.name)); };
+    const open = on => { menu.hidden = !on; btn.setAttribute('aria-expanded', String(on)); if (on) { sync(); const cur = menu.querySelector('[aria-checked="true"]'); (cur || menu.firstElementChild).focus(); } };
+    btn.addEventListener('click', ev => { ev.stopPropagation(); open(menu.hidden); });
+    menu.addEventListener('click', ev => { const b = ev.target.closest('button[data-skin]'); if (!b) return; skin.apply(b.dataset.skin); sync(); open(false); btn.focus(); });
+    menu.addEventListener('keydown', ev => {
+      const items = $$('button', menu), i = items.indexOf(document.activeElement);
+      if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); items[(i + (ev.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus(); }
+      else if (ev.key === 'Home' || ev.key === 'End') { ev.preventDefault(); items[ev.key === 'Home' ? 0 : items.length - 1].focus(); }
+      else if (ev.key === 'Tab') open(false);
+      else if (ev.key === 'Escape') { ev.preventDefault(); open(false); btn.focus(); }
+    });
+    document.addEventListener('pointerdown', ev => { if (!menu.hidden && !ev.target.closest('.theme-pick')) open(false); });
+    CL.bus.on('skin', sync);
+  }
+
   /* ---------- the loop ---------- */
   let last = 0;
   function loop(now) {
@@ -307,7 +371,8 @@
 
   function start(data) {
     missions.init();
-    skin.apply(store.get('cl-skin', 'control'));
+    // colour scheme: Rad Lab unless one was picked (an old light-skin choice is kept)
+    skin.apply(store.get('cl-scheme', store.get('cl-skin', '') === 'classroom' ? 'classroom' : 'radlab'));
     syncSound();
     home.cv = $('#homeBg');
     home.icons = $$('.hicon').map(cv => ({ cv, kind: cv.dataset.icon, w: 0, h: 0 }));
@@ -324,6 +389,46 @@
     if (current === 'home' && !/[?&]nointro\b/.test(location.search)) { try { CL.intro.play(true); } catch (err) { console.error('intro', err); } }
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { skin.read(); CL.bus.emit("skin", skin.name); sizeHome(); const s = CL.screens[current]; if (s && s.resize) s.resize(); });
     requestAnimationFrame(loop);
+    cornerGuard();
+  }
+
+  /* ---------- keep our controls clear of a host's corner badge ----------
+     Some free hosts add a small fixed badge in the bottom-right corner (for example "Powered by Netlify").
+     We never touch it; we only notice it and leave that corner empty, so no key or panel hides underneath. */
+  function cornerGuard() {
+    const ours = new Set(document.body.children), root = document.documentElement;
+    let w = 0, h = 0, timer = 0;
+    const scan = () => {
+      const W = innerWidth, H = innerHeight;
+      let seen = false, box = null;
+      for (const top of [...document.body.children, ...root.children]) {
+        if (top === document.body || top === document.head) continue;
+        if (ours.has(top) || /^(SCRIPT|STYLE|LINK|TEMPLATE|NOSCRIPT)$/.test(top.tagName)) continue;
+        for (const el of [top, ...top.querySelectorAll('*')].slice(0, 80)) {
+          const cs = getComputedStyle(el);
+          if (cs.position !== 'fixed' || cs.display === 'none' || cs.visibility === 'hidden') continue;
+          const r = el.getBoundingClientRect();
+          if (r.width < 8 || r.height < 8 || r.right < W - 90 || r.bottom < H - 160) continue;
+          seen = true;
+          if (r.width <= 380 && r.height <= 130) { box = r; break; }
+        }
+        if (box) break;
+      }
+      if (!seen) set(0, 0);                       // gone (or hidden by the visitor): give the corner back
+      else if (box) set(Math.ceil(W - box.left + 10), Math.ceil(H - box.top + 10));
+      // a foreign element that is bigger than a badge (its pop-up card) leaves the layout as it is
+    };
+    const set = (nw, nh) => {
+      if (Math.abs(nw - w) < 4 && Math.abs(nh - h) < 4) return;
+      w = nw; h = nh;
+      document.body.classList.toggle('has-badge', w > 0);
+      root.style.setProperty('--badge-w', w + 'px'); root.style.setProperty('--badge-h', h + 'px');
+      sizeHome(); const s = CL.screens[current]; if (s && s.resize) s.resize();
+    };
+    const soon = () => { clearTimeout(timer); timer = setTimeout(scan, 120); };
+    for (const el of [document.body, root]) new MutationObserver(soon).observe(el, { childList: true });
+    window.addEventListener('resize', soon);
+    for (const t of [300, 1500, 4000, 9000]) setTimeout(scan, t);
   }
 
   const hot = window.claude && window.claude.hot;

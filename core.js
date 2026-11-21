@@ -33,17 +33,25 @@ const CL = (() => {
 
   /* ---------- skins (dark control room / light classroom) ---------- */
   const skin = {
-    name: 'control', v: {},
+    name: 'radlab', v: {},
+    // the colour schemes; Rad Lab is the default, 'classroom' (Daylight) is the light one for bright rooms and projectors
+    list: [
+      { id: 'radlab', label: 'Rad Lab 1939', note: 'slate, cream, brass, green phosphor', sw: ['#262d31', '#414c52', '#e9b949', '#9df5b8'] },
+      { id: 'control', label: 'Night shift', note: 'green-black bench, amber lamps', sw: ['#1d2420', '#36413b', '#ffb020', '#ffc278'] },
+      { id: 'bakelite', label: 'Bakelite', note: 'warm brown, brass, nixie orange', sw: ['#1d1815', '#372d28', '#ffb020', '#ffa15c'] },
+      { id: 'blueprint', label: 'Blueprint', note: 'drafting blue, safety orange', sw: ['#0f2d4d', '#1c4775', '#ff7b22', '#dff3ff'] },
+      { id: 'classroom', label: 'Daylight', note: 'light, for bright rooms', sw: ['#c5ccc4', '#e9ede7', '#ffb020', '#1d2521'] },
+    ],
     apply(name) {
-      this.name = name === 'classroom' ? 'classroom' : 'control';
+      this.name = skin.list.some(k => k.id === name) ? name : 'radlab';
       document.body.dataset.skin = this.name;
-      store.set('cl-skin', this.name);
+      store.set('cl-scheme', this.name);
       this.read();
       bus.emit('skin', this.name);
     },
     read() {
       const cs = getComputedStyle(document.body);
-      for (const k of ['--plot-grid', '--plot-axis', '--plot-text', '--plot-strong', '--ink', '--ink-2', '--ink-3', '--accent', '--hot', '--amber', '--ok', '--bad', '--panel-solid', '--bg'])
+      for (const k of ['--plot-grid', '--plot-axis', '--plot-text', '--plot-strong', '--ink', '--ink-2', '--ink-3', '--accent', '--hot', '--amber', '--ok', '--bad', '--panel-solid', '--bg', '--note-ink', '--note-halo', '--lamp', '--copper'])
         this.v[k] = cs.getPropertyValue(k).trim() || '#888';
     },
     c(k) { return this.v[k] || '#888'; },
@@ -90,6 +98,7 @@ const CL = (() => {
       boom(big = 1) { noise(1.6 + big, 0.6, 900, 'lowpass', 60); tone(70, 1.4, 'sine', 0.45, 0, 26); noise(0.25, 0.4, 3000, 'highpass', null, 0.02); },
       zap() { tone(1600, 0.22, 'sawtooth', 0.045, 0, 160); },
       spark() { noise(0.07, 0.1, 5000, 'highpass'); },
+      scribble(dur = 0.6) { const n = Math.max(3, Math.round(dur * 9)); for (let i = 0; i < n; i++) noise(0.04 + Math.random() * 0.05, 0.05, 2200 + Math.random() * 1800, 'bandpass', null, i * dur / n + Math.random() * 0.02); },
       beep(f = 660, d = 0.14) { tone(f, d, 'square', 0.05); },
       fanfare() { [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, 0.3, 'triangle', 0.08, i * 0.11)); },
       ding() { tone(1318.5, 0.5, 'sine', 0.06); tone(1975.5, 0.6, 'sine', 0.035, 0.05); },
