@@ -31,11 +31,11 @@
   const BALL_GAP = 0.05;                           // gap between the last ball of one stage and the next magnet (m)
 
   missions.add({ id: 'gg-10', screen: 'gauss', title: 'Faster than a sprinter', goal: 'Fire the coil gun faster than 10 m/s (a top sprinter runs about 10 m/s).' });
-  missions.add({ id: 'gg-suck', screen: 'gauss', title: 'Suck-back', goal: 'Switch the coils off late (switch-off point +25 % or later) so a coil pulls the slug backwards.' });
+  missions.add({ id: 'gg-suck', full: true, screen: 'gauss', title: 'Suck-back', goal: 'Switch the coils off late (switch-off point +25 % or later) so a coil pulls the slug backwards.' });
   missions.add({ id: 'gg-alu', screen: 'gauss', title: 'Wrong metal', goal: 'Try to fire an aluminium slug. What happens, and why?' });
   missions.add({ id: 'gg-pend', screen: 'gauss', title: 'Big swing', goal: 'Make the 100 g ballistic pendulum swing up more than 20 cm.' });
   missions.add({ id: 'gg-balls', screen: 'gauss', title: 'Steel-ball sniper', goal: 'With magnets and balls, launch the last ball faster than 5 m/s.' });
-  missions.add({ id: 'gg-burn', screen: 'gauss', title: 'Too hot to handle', goal: 'In overload mode, keep firing until a coil overheats (an illustrative failure).' });
+  missions.add({ id: 'gg-burn', full: true, screen: 'gauss', title: 'Too hot to handle', goal: 'In overload mode, keep firing until a coil overheats (an illustrative failure).' });
 
   let active = false, cv, ctx, W = 900, H = 420, userH = +store.get('cl-h-gauss', 0) || 0, shake, v3 = null;
   const fx = new FX();
@@ -315,7 +315,13 @@
       const L = coilLayout(S.stages), x0 = L.xc[0] - GG.Lc / 2 + 0.005 - S.slugCm / 200;
       return { x: Math.max(x0 + 0.0625 * W / kClose, L.xBreech + W / kClose / 2 - 0.02), y: 0, k: kClose, phase: 'follow' };
     }
-    if (!shot) return { x: gunMid, y: 0, k: kGun, phase: 'gun' };
+    if (!shot) {
+      // waiting to fire: the zoom keys work here too, closing in on the slug (or the first ball) at the breech
+      if (Math.abs(cam.zoom - 1) < 1e-6) return { x: gunMid, y: 0, k: kGun, phase: 'gun' };
+      const k = kGun * cam.zoom, focus = kind === 'coil' ? lay.xc[0] - GG.Lc / 2 + 0.005 - S.slugCm / 200 : lay.xStart;
+      const lo = lay.xBreech - 0.02 + W / k / 2, hi = Math.max(lo, lay.muzzle + 0.1 - W / k / 2);
+      return { x: cam.zoom < 1 ? gunMid : clamp(focus + 0.3 * W / k, lo, hi), y: 0, k, phase: `gun ${cam.zoom}` };
+    }
     const t = shot.sim, p = shot.posAt(t);
     if (shot.set.speed === 'real') return { x: (lay.xBreech + lay.xT + 0.3) / 2, y: 0.1, k: kAll, phase: 'all' };
     if (shot.hit !== null || (shot.tHit !== null && t >= shot.tHit)) return { x: lay.xT + 0.15, y: 0.14, k: kTgt, phase: 'target' };
@@ -538,12 +544,23 @@
   function callouts(notes) {
     if (W < 640) return;
     ctx.font = '600 14px "Barlow Condensed", "Arial Narrow", sans-serif'; ctx.textBaseline = 'middle';
-    for (const [x, y, tx, ty, text] of notes) {
-      const ax = X(x), ay = Y(y), bx = X(tx), by = clamp(Y(ty), TOP + 50, H - 14);
-      if (bx < 4 || bx > W - 40) continue;
-      ctx.strokeStyle = 'rgba(217,225,218,0.55)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(bx + 8, by); ctx.stroke();
-      ctx.fillStyle = 'rgba(217,225,218,0.9)'; ctx.beginPath(); ctx.arc(ax, ay, 2.2, 0, TAU); ctx.fill();
-      ctx.textAlign = 'left'; ctx.fillStyle = '#dfe6df'; ctx.fillText(text, bx + 12, by);
+    // Zoomed in (one or two coils) several labels want the same spot under the top bar: the highest one keeps it and the
+    // others step away from it, towards their own part, so no two labels are ever drawn on top of each other
+    const placed = [];
+    const list = notes.map(([x, y, tx, ty, text]) => ({ ax: X(x), ay: Y(y), bx: X(tx), want: Y(ty), text, w: ctx.measureText(text).width }))
+      .filter(n => n.bx >= 4 && n.bx <= W - 40).sort((a, b) => a.want - b.want);
+    const span = n => (n.bx + 12 + n.w > W - 56 && n.bx - 12 - n.w > 4 ? [n.bx - 12 - n.w, n.bx - 12] : [n.bx + 12, n.bx + 12 + n.w]);
+    const clash = (n, y) => { const [a0, a1] = span(n); return placed.some(q => { const [b0, b1] = span(q); return a0 < b1 + 10 && a1 + 10 > b0 && Math.abs(y - q.by) < 19; }); };
+    for (const n of list) {
+      let by = clamp(n.want, TOP + 50, H - 14);
+      const dir = by < n.ay ? 1 : -1;
+      for (let k = 0; k < 12 && clash(n, by); k++) by = clamp(by + dir * 20, TOP + 50, H - 14);
+      n.by = by; placed.push(n);
+      // a label that would run under the zoom keys on the right is written to the left of its line instead
+      const left = n.bx + 12 + n.w > W - 56 && n.bx - 12 - n.w > 4;
+      ctx.strokeStyle = 'rgba(217,225,218,0.55)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(n.ax, n.ay); ctx.lineTo(n.bx, by); ctx.lineTo(n.bx + (left ? -8 : 8), by); ctx.stroke();
+      ctx.fillStyle = 'rgba(217,225,218,0.9)'; ctx.beginPath(); ctx.arc(n.ax, n.ay, 2.2, 0, TAU); ctx.fill();
+      ctx.textAlign = left ? 'right' : 'left'; ctx.fillStyle = '#dfe6df'; ctx.fillText(n.text, n.bx + (left ? -12 : 12), by);
     }
   }
   function drawGate(xg, sx, Ls, geo, chrono) {
@@ -1042,7 +1059,7 @@
     const st = $('#ggStatus'); if (!st) return;
     let txt, cls = '';
     if (charging) { txt = 'Charging the capacitors…'; cls = 'is-warn'; }
-    else if (!shot) txt = S.type === 'coil' ? `Ready: ${S.stages} coils, ${S.turns} turns, ${pl(S.current, 3)} A` : `Ready: ${S.bstages} magnets, ${S.behind} balls behind each`;
+    else if (!shot) txt = S.type === 'coil' ? `Ready: ${S.stages} coil${S.stages === 1 ? '' : 's'}, ${S.turns} turns, ${pl(S.current, 3)} A` : `Ready: ${S.bstages} magnet${S.bstages === 1 ? '' : 's'}, ${S.behind} ball${S.behind === 1 ? '' : 's'} behind each`;
     else if (!shot.done) {
       const p = shot.posAt(shot.sim);
       if (shot.hit !== null) txt = 'Hit the target'; else if (shot.kind === 'coil') {
@@ -1074,7 +1091,7 @@
           if (shot.set.cutoff > 0.2) h += ` Because the coils switched off <em>after</em> the middle, they pulled the slug back as it left (<b>suck-back</b>) and wasted speed.`;
           else if (sucked.length) h += ` Coil ${sucked[0].k + 1} pulled back a little as the slug left (suck-back).`;
           h += ` Only about <b>${pct(r.eff, 2)}</b> of the electrical energy ended up as motion; most became heat in the copper.`;
-          if (shot.tgt.type === 'pendulum') h += ` The pendulum swung up <b>${pl(shot.tgt.h * 100, 3)} cm</b>: that height alone tells you the speed (Full detail shows how).`;
+          if (shot.tgt.type === 'pendulum') h += ` The pendulum swung up <b>${pl(shot.tgt.h * 100, 3)} cm</b>: that height alone tells you the speed (Intermediate shows how).`;
         }
       }
     } else {
@@ -1358,12 +1375,14 @@
     $('#ggRepair').addEventListener('click', repairCoils);
     $('#ggSelA').addEventListener('change', ev => { S[S.type === 'coil' ? 'gA' : 'gbA'] = ev.target.value; save(); drawGraphs(); });
     $('#ggSelB').addEventListener('change', ev => { S[S.type === 'coil' ? 'gB' : 'gbB'] = ev.target.value; save(); drawGraphs(); });
-    $('#ggZoomIn').addEventListener('click', () => { cam.zoom = clamp(cam.zoom * 1.4, 0.3, 6); });
-    $('#ggZoomOut').addEventListener('click', () => { cam.zoom = clamp(cam.zoom / 1.4, 0.3, 6); });
-    $('#ggZoomFit').addEventListener('click', () => { cam.zoom = 1; });
+    // zoom keys: + and − step through the shared levels, the level key steps 1× → 2× → 3× → 1× and shows the zoom
+    $('#ggZoomIn').addEventListener('click', () => { cam.zoom = CL.zoom.step(cam.zoom, 1, 0.5, 6); syncZoomKey(); });
+    $('#ggZoomOut').addEventListener('click', () => { cam.zoom = CL.zoom.step(cam.zoom, -1, 0.5, 6); syncZoomKey(); });
+    $('#ggZoomFit').addEventListener('click', () => { cam.zoom = CL.zoom.cycle(cam.zoom); syncZoomKey(); });
+    syncZoomKey();
     $('#ggToast .toast-close').addEventListener('click', () => { $('#ggToast').hidden = true; });
     CL.bus.on('mission', renderMissions);
-    CL.bus.on('level', () => { dataDirty = true; narrate(); });
+    CL.bus.on('level', () => { dataDirty = graphDirty = true; narrate(); });
     document.addEventListener('keydown', ev => {
       if (!active) return;
       const tg = ev.target.tagName;
@@ -1387,9 +1406,11 @@
     patCache.pat = null;
     drawGraphs();
   }
+  function syncZoomKey() { if (!(v3 && v3.on)) CL.zoom.show($('#ggZoomFit'), cam.zoom, 'whole gun'); }
   function init() {
     cv = $('#ggCanvas');
     v3 = CL.V3.attach($('#ggWrap'), { home: { yaw: -2.05, pitch: 0.32, dist: 0.5, target: [0, 0, 0], fov: 46, minDist: 0.01 }, storeKey: 'cl-3d-gauss',
+      onToggle: on => { if (!on) setTimeout(syncZoomKey, 0); },
       full: { bar: () => $('#ggWrap').nextElementSibling, onChange: () => resize() },
       ride: { label: () => S.type === 'coil' ? 'Ride the slug' : 'Ride the ball', title: 'Ride along with the projectile, just behind it, then press Fire',
         onToggle: on => { if (on && !shot) toast($('#ggToast'), `<b>Ride mode.</b> Press <b>Fire</b> and you fly with the ${S.type === 'coil' ? 'slug through the coils' : 'balls from magnet to magnet'} and into the target. Slow motion or bullet time are best for this.`, '', 6500); } } });

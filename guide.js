@@ -25,9 +25,7 @@
     ['label[for="r-gg-cutoff"]', 'Switch-off point', 'When each coil turns off. 0 % means exactly when the slug reaches the coil\'s middle. Later than that, the coil pulls the slug back: suck-back.'],
     ['label[for="r-gg-slugCm"]', 'Slug length', 'A longer slug is heavier but magnetises more easily along its length. Try a few lengths and compare the speeds.'],
     ['label[for="r-gg-behind"]', 'Balls behind each magnet', 'With one ball, it touches the magnet and is held too tightly to fly off. With two or more, the last ball is far enough away to escape.'],
-    ['label[for="r-raceB"]', 'Magnetic field B', 'Bends each racer into a half circle. The time for half a circle depends only on charge, mass and field, not on speed.'],
     ['label[for="r-collKa"]', 'Kinetic energy', 'The energy of motion of each beam particle. More energy means a harder smash and more energy available to create new particles.'],
-    ['label[for="r-tgtK"]', 'Beam energy', 'Faster particles go deeper into the material before they stop. Most of their energy is dropped right at the end: the Bragg peak.'],
   ];
   let box = null, openBtn = null;
   function attachTips() {
@@ -84,6 +82,51 @@
     for (const b of $$('.lvl button')) b.addEventListener('click', () => apply(b.dataset.level));
     const hl = $('#homeLevel'); if (hl) hl.addEventListener('click', ev => { const b = ev.target.closest('button[data-value]'); if (b) apply(b.dataset.value); });
     apply(store.get('cl-level', 'simple'));
+    // first visit: ask once who is using it; the intro plays first
+    if (!store.get('cl-level-chosen', false) && !/[?&]nointro\b/.test(location.search)) {
+      let shown = false;
+      const later = () => { if (!shown) { shown = true; setTimeout(chooser, 350); } };
+      bus.on('intro', on => { if (!on) later(); });
+      setTimeout(() => { if (!(CL.intro && CL.intro.on)) later(); }, 1500);
+    }
   }
-  CL.guide = { init };
+  // "How much physics do you know?": two big choices, remembered, changeable at any time from the top bar
+  function chooser() {
+    if ($('#chooser')) return;
+    const el = document.createElement('div');
+    el.className = 'chooser'; el.id = 'chooser';
+    el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-labelledby', 'chooserT');
+    el.innerHTML = `<div class="chooser-card">
+        <p class="chooser-kicker">Before you start</p>
+        <h2 id="chooserT">How much physics do you know?</h2>
+        <p class="chooser-sub">Pick one. You can switch at any time with the keys at the top right.</p>
+        <div class="chooser-opts">
+          <button type="button" class="chooser-opt" data-pick="simple">
+            <svg viewBox="0 0 120 80" aria-hidden="true"><circle cx="60" cy="40" r="26" class="co-orbit"/><circle cx="86" cy="40" r="5" class="co-dot"/><path d="M86 40 l0 -14" class="co-arrow"/><path d="M83 29 l3 -4 3 4" class="co-arrow"/><text x="60" y="44" class="co-txt">B</text></svg>
+            <b>I’m a complete beginner</b>
+            <span>The big ideas in plain words first. Fewer controls, a note on every screen saying what is happening and why, ? buttons, and a one-minute tour.</span>
+            <i>Start as a beginner</i>
+          </button>
+          <button type="button" class="chooser-opt" data-pick="full">
+            <svg viewBox="0 0 120 92" aria-hidden="true"><path d="M60 38 m-4 0 a4 4 0 1 1 8 0 a8 8 0 1 1 -16 0 a12 12 0 1 1 24 0 a16 16 0 1 1 -32 0 a20 20 0 1 1 40 0 a24 24 0 1 1 -48 0" class="co-orbit"/><text x="60" y="88" class="co-txt co-f">r = mv/qB</text></svg>
+            <b>I know some physics</b>
+            <span>Every control, the formulas with your own numbers put in, two graphs, and checks against real published data.</span>
+            <i>Go intermediate</i>
+          </button>
+        </div>
+      </div>`;
+    document.body.appendChild(el);
+    const done = pick => {
+      store.set('cl-level-chosen', true); apply(pick);
+      el.classList.add('is-leaving'); setTimeout(() => el.remove(), 260);
+      if (pick === 'simple' && !store.get('cl-toured', false)) { const t = $('#btnTour'); if (t) setTimeout(() => t.click(), 420); }
+    };
+    el.addEventListener('click', ev => { const b = ev.target.closest('[data-pick]'); if (b) done(b.dataset.pick); });
+    el.addEventListener('keydown', ev => {
+      if (ev.key === 'Escape') { ev.preventDefault(); done(level.name); }
+      if (ev.key === 'Tab') { const bs = $$('.chooser-opt', el), i = bs.indexOf(document.activeElement); ev.preventDefault(); bs[(i + (ev.shiftKey ? bs.length - 1 : 1)) % bs.length].focus(); }
+    });
+    requestAnimationFrame(() => { el.classList.add('is-on'); $('.chooser-opt', el).focus(); });
+  }
+  CL.guide = { init, chooser };
 })();

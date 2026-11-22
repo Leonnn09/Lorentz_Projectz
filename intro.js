@@ -1,35 +1,37 @@
 /* =====================================================================
    Project Lorentz — the title sequence (CL.intro).
-   A cold open in handwriting (where the cyclotron began, and that this one
-   is ours), then a small cyclotron spins up in the dark, seen first from a
-   low angle in 3-D while the camera rises to look straight down (every
-   half-turn takes the same time, as in the real machine). The extracted beam
-   burns the name in, the project plate stamps down, the makers' plate slides
-   in and the four builders sign it.
+   How a cyclotron works, told in five short steps a beginner can follow:
+     1. a proton (a tiny particle with a + charge) flies in on a straight line;
+     2. the magnet is switched on: its force always points to the centre, so the path bends into a circle;
+     3. two metal D's push it every time it crosses the gap between them: faster means a bigger circle;
+     4. every lap still takes the same time, so the pushes can keep a steady beat;
+     5. at the edge it shoots out, and the beam writes the name, F = q(E + v × B): E pushes, B bends.
+   Then the project plate stamps down and the four builders sign it.
    It plays when the app opens on Home; "Play the intro" replays it.
    Any key or click skips to the end, and then starts the app.
    ===================================================================== */
 (() => {
   'use strict';
-  const { $, clamp, TAU, audio, reduceMotion, fitCanvas } = CL;
+  const { $, $$, clamp, TAU, audio, reduceMotion, fitCanvas } = CL;
 
   // timeline, in seconds
-  const T_A = 0.15, T_B = 0.8, T_C = 2.2, T_COLD_OUT = 2.95;  // the cold open: three handwritten lines, then they fade
-  const T_M3 = 2.75;                                   // the machine fades in, in 3-D, seen from a low angle
-  const HALF = 12, HALF_T = 0.2;                       // half-turns and the (constant) time for each one
-  const T0 = 3.05, T_EXIT = T0 + HALF * HALF_T;         // spin-up, then extraction
-  const T_X0 = T_EXIT - 0.5, T_X1 = T_EXIT - 0.12;     // the camera arrives straight above: cross-fade to the flat view
-  const T_BURN0 = T_EXIT + 0.32, T_BURN = 1.45;        // the beam writes the name
-  const T_QUENCH = T_BURN0 + T_BURN + 0.18;            // the hot letters cool to steel
+  const HALF = 12, HALF_T = 0.36;                       // half-turns of the spiral, and the (constant) time for each one
+  const T_IN = 0.15, T_FIELD = 1.95;                    // the proton flies in straight; the magnet comes on
+  const LAPS = 3, T0 = T_FIELD + LAPS * 2 * HALF_T;     // whole circles with the magnet alone, then the pushes begin
+  const T_DEES = T0 - 0.45, T_BEAT = T0 + 6 * HALF_T;   // the D's appear; "every lap takes the same time"
+  const T_EXIT = T0 + HALF * HALF_T;                    // the proton reaches the edge and leaves
+  const T_BURN0 = T_EXIT + 0.32, T_BURN = 1.45;         // the beam writes the name
+  const T_QUENCH = T_BURN0 + T_BURN + 0.18;             // the hot letters cool to steel
   const T_STAMP = T_QUENCH + 0.42, T_EQ = T_STAMP + 0.32, T_PLATE = T_EQ + 0.4, T_SIGN = T_PLATE + 0.3, T_READY = T_SIGN + 1.0;
+  const STEPS = [[T_IN, 1], [T_FIELD, 2], [T_DEES, 3], [T_BEAT, 4], [T_EXIT, 5]];
 
-  const st = { on: false, t: 0, last: 0, raf: 0, cv: null, ctx: null, W: 0, H: 0, k: -1, sparks: [], embers: [], flash: 0, flashCol: '255,255,255',
-    phase: '', hot: 0, crackle: 0, el: null, burn: null, name: null, back: null, emberT: 0 };
+  const st = { on: false, t: 0, last: 0, raf: 0, cv: null, ctx: null, W: 0, H: 0, k: -1, sparks: [], embers: [], pushes: [], flash: 0, flashCol: '255,255,255',
+    phase: '', hot: 0, crackle: 0, el: null, burn: null, name: null, back: null, emberT: 0, story: null, step: 0 };
 
   function geom() {
     const r = st.name.getBoundingClientRect(), o = st.el.getBoundingClientRect();
     const cx = r.left - o.left + r.width / 2, cy = r.top - o.top + r.height / 2;
-    const R = Math.max(70, Math.min(st.H * 0.42, st.W * 0.32));
+    const R = Math.max(70, Math.min(st.H * 0.34, st.W * 0.3));
     return { cx, cy, R, tl: r.left - o.left, tt: r.top - o.top, tw: r.width, th: r.height };
   }
   // alternating half circles whose radius grows as √(number of pushes). A proton with B into the screen goes round
@@ -58,55 +60,28 @@
     }
   }
   function setPhase(cls, on = true) { st.el.classList.toggle(cls, on); }
-
-  // ---- 3-D: the machine in perspective while it spins up; the camera rises until it looks straight down,
-  //      where it matches the flat drawing exactly (the dee radius, 1 unit, becomes R pixels) ----
-  let sc = null, cv3 = null;
-  const smooth = x => x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x);
-  function draw3D(g, t, pol, kNow, frac, sp, pal) {
-    const W = st.W, H = st.H, R = g.R;
-    if (!sc) { sc = new CL.V3.Scene({ yaw: -Math.PI / 2, pitch: 0.4, dist: 4, fov: 40, maxDist: 400 }); cv3 = document.createElement('canvas'); }
-    const { ctx: c3 } = fitCanvas(cv3, W, H);
-    const u = smooth((t - T_M3) / (T_X1 - 0.05 - T_M3)), uu = 1 - Math.pow(1 - u, 1.8);
-    const fov = 40, f = 0.5 * Math.min(W * 0.85, H * 1.05) / Math.tan(fov * Math.PI / 360), dEnd = f / R;
-    sc.yaw = -Math.PI / 2 - 1.1 * (1 - uu); sc.pitch = 0.28 + (Math.PI / 2 - 0.002 - 0.28) * uu;
-    sc.begin(c3, W, H, { target: [0, 0, -0.06 * (1 - uu)], dist: dEnd * (0.7 + 0.3 * uu), fov, fog: false });
-    c3.clearRect(0, 0, W, H); sc.vignette = false;          // the title card's own background shows through
-    sc.cx = g.cx; sc.cy = g.cy;
-    const to3 = (x, y, z = 0) => [(x - g.cx) / R, -(y - g.cy) / R, z];
-    // the magnet underneath: a steel pole, its copper coil, and the vacuum chamber floor; a warm glow on the floor below
-    sc.pool([0, 0, -0.66], 1.9, 1.9, [201, 128, 63], 0.09 * (1 - uu));
-    sc.cyl([0, 0, -0.66], [0, 0, -0.17], 1.3, { rgb: [46, 52, 50], spec: 0.2 }, 56);
-    sc.tube([0, 0, -0.17], [0, 0, 0.05], 1.08, 1.2, { rgb: [206, 134, 72], spec: 0.6, shin: 28, innerRgb: [126, 74, 38], endRgb: [224, 150, 88] }, 56);
-    sc.cyl([0, 0, -0.17], [0, 0, -0.06], 1.06, { rgb: [11, 15, 13], spec: 0.04 }, 56);
-    // the dees: hollow copper with a see-through lid, lit red (+) or blue (−) by the RF voltage
-    const gw = 0.03, th = Math.acos(gw), N = 30, red = [229, 72, 63], blue = [62, 126, 230], k = Math.abs(pol) * 0.6;
-    const D = sx => { const pts = [[sx * gw, -Math.sin(th)]]; for (let i = 0; i <= N; i++) { const a = -th + 2 * th * i / N; pts.push([sx * Math.cos(a), Math.sin(a)]); } pts.push([sx * gw, Math.sin(th)]); return pts; };
-    for (const sx of [-1, 1]) {
-      const col = (sx < 0) === (pol > 0) ? red : blue, sh = D(sx);
-      const top = [58, 40, 28].map((v, i) => v + (col[i] - v) * k * 0.55);
-      sc.prism(sh, -0.05, 0.035, { rgb: [168, 102, 52], topRgb: top, topA: 0.5 + 0.2 * k, sideA: 0.95, spec: 0.35, noBottom: true });
-      sc.path(sh.concat([sh[0]]).map(([x, y]) => [x, y, 0.037]), `rgba(240,182,124,${0.75 + 0.25 * k})`, 1.6);
-    }
-    // the magnetic field points down through the chamber ("into the screen"); seen from straight above, each arrow becomes a ⊗
-    const fs = Math.max(20, R * 0.17) / R, len = 0.06 + 0.3 * (1 - u), fa = 0.1 + 0.32 * (1 - u);
-    for (let i = -7; i <= 7; i++) for (let j = -7; j <= 7; j++) {
-      const x = (i + 0.5) * fs, y = -(j + 0.5) * fs;
-      if (Math.hypot(x, y) > 0.94 || Math.abs(x) < 0.07 || (i + j) % 2) continue;
-      sc.arrow([x, y, 0.12 + len], [x, y, -0.12], `rgba(179,166,255,${fa})`, 1.1, 0.16);
-    }
-    // the spiral so far, and the proton
-    if (t >= T0) {
-      const nDone = Math.min(HALF, kNow);
-      for (let i = 0; i <= Math.min(nDone, HALF - 1); i++) {
-        const s = sp[i], fr = i < nDone ? 1 : frac, n = Math.max(2, Math.round(28 * fr)), pts = [];
-        for (let q = 0; q <= n; q++) { const a = s.a0 - Math.PI * fr * q / n; pts.push(to3(g.cx + Math.cos(a) * s.r, g.cy + s.cy + Math.sin(a) * s.r, 0)); }
-        sc.path(pts, pal[Math.round(i / (HALF - 1) * 63)], Math.max(2, R * 0.012), { chunk: 4 });
-      }
-      if (kNow < HALF) { const [px, py] = posOn(g, sp[kNow], frac); sc.glow(to3(px, py, 0), 0.085, [255, 206, 150], 1, { core: true }); }
-    }
-    sc.end();
-    return (x, y) => { const q = sc.project(to3(x, y, 0)); return q ? [q.x, q.y] : [x, y]; };
+  // the captions: one step at a time, in the same place; beside the machine when there is room, under it otherwise
+  function showStep(n) {
+    st.step = n;
+    for (const c of $$('.cap', st.story)) { const k = +c.dataset.n; c.classList.toggle('is-on', k === n); c.classList.toggle('is-past', k < n); }
+  }
+  function layoutStory() {
+    if (!st.story || !st.name) return;
+    const g = geom(), left = clamp(st.W * 0.04, 18, 64), free = g.cx - 1.22 * g.R - 36 - left;
+    const side = free >= 250 && st.W >= st.H * 1.2;
+    st.story.classList.toggle('is-side', side);
+    st.story.style.setProperty('--sl', `${left}px`); st.story.style.setProperty('--sw', `${Math.min(380, free)}px`);
+  }
+  function text(ctx, s, x, y, o = {}) {
+    ctx.font = `${o.w || 600} ${o.size || 14}px ${o.font || '"Barlow Condensed", "Arial Narrow", sans-serif'}`; ctx.textAlign = o.align || 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(4,7,6,0.85)'; ctx.lineJoin = 'round'; ctx.strokeText(s, x, y);
+    ctx.fillStyle = o.color || '#e8eee9'; ctx.fillText(s, x, y);
+  }
+  function arrow(ctx, x0, y0, x1, y1, col, w) {
+    const a = Math.atan2(y1 - y0, x1 - x0), hl = Math.max(8, w * 4);
+    ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * hl * 0.6, y1 - Math.sin(a) * hl * 0.6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - Math.cos(a - 0.42) * hl, y1 - Math.sin(a - 0.42) * hl); ctx.lineTo(x1 - Math.cos(a + 0.42) * hl, y1 - Math.sin(a + 0.42) * hl); ctx.closePath(); ctx.fill();
   }
 
   // ---- one frame ----
@@ -115,64 +90,124 @@
     const { ctx } = fitCanvas(st.cv, W, H);
     ctx.clearRect(0, 0, W, H);
     const g = geom(), t = st.t, sp = spiral(g.R), pal = CL.palette('rainbow');
+    const R = g.R, cx = g.cx, cy = g.cy, s0 = sp[0], r0 = s0.r, P = 2 * HALF_T, v = Math.PI * r0 / HALF_T;
     const kNow = Math.floor((t - T0) / HALF_T), frac = clamp((t - T0) / HALF_T - kNow, 0, 1);
     const pol = t < T0 ? 0 : (kNow % 2 ? -1 : 1) * Math.cos(Math.PI * frac) * (t < T_EXIT ? 1 : 0.35);
-    // how much of the 3-D view and of the flat view to show
-    const a3 = !CL.V3 || reduceMotion ? 0 : t < T_M3 ? 0 : t < T_X0 ? clamp((t - T_M3) / 0.7, 0, 1) : clamp(1 - (t - T_X0) / (T_X1 - T_X0), 0, 1);
-    const a2 = !CL.V3 || reduceMotion ? 1 : t < T_X0 ? 0 : clamp((t - T_X0) / (T_X1 - T_X0), 0, 1);
-    const at = a3 > 0.001 ? draw3D(g, t, pol, kNow, frac, sp, pal) : null;
-    const scr = (x, y) => at && a3 > 0.5 ? at(x, y) : [x, y];
-    // ---- the machine: coil ring, vacuum chamber and the two dees
-    const dim = (t < T_EXIT ? 1 : clamp(1 - (t - T_EXIT) / 0.9, 0.26, 1)) * a2;
+    const aMag = clamp((t - T_FIELD) / 0.5, 0, 1), aDee = clamp((t - T_DEES) / 0.5, 0, 1);
+    const dim = t < T_EXIT ? 1 : clamp(1 - (t - T_EXIT) / 0.9, 0.26, 1);
     ctx.save(); ctx.globalAlpha = dim;
-    const R = g.R, cx = g.cx, cy = g.cy;
-    const halo = ctx.createRadialGradient(cx, cy, R * 0.9, cx, cy, R * 1.45); halo.addColorStop(0, 'rgba(201,128,63,0.10)'); halo.addColorStop(1, 'rgba(201,128,63,0)');
+    // ---- the magnet: a copper coil round the vacuum chamber, dark until it is switched on
+    const halo = ctx.createRadialGradient(cx, cy, R * 0.9, cx, cy, R * 1.45); halo.addColorStop(0, `rgba(201,128,63,${0.1 * aMag})`); halo.addColorStop(1, 'rgba(201,128,63,0)');
     ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(cx, cy, R * 1.45, 0, TAU); ctx.fill();
+    ctx.globalAlpha = dim * (0.3 + 0.7 * aMag);
     const cg = ctx.createRadialGradient(cx, cy, R * 1.08, cx, cy, R * 1.2); cg.addColorStop(0, '#5a2c0e'); cg.addColorStop(0.5, '#d7975f'); cg.addColorStop(1, '#6b3412');
     ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(cx, cy, R * 1.2, 0, TAU); ctx.arc(cx, cy, R * 1.08, 0, TAU, true); ctx.fill();
-    ctx.fillStyle = '#060a08'; ctx.beginPath(); ctx.arc(cx, cy, R * 1.04, 0, TAU); ctx.fill();
-    // field symbols: B points into the screen
-    ctx.strokeStyle = 'rgba(179,166,255,0.16)'; ctx.lineWidth = 1;
-    const fs = Math.max(20, R * 0.17), q = Math.min(3, fs * 0.13);
-    ctx.beginPath();
-    for (let i = -7; i <= 7; i++) for (let j = -7; j <= 7; j++) {
-      const px = cx + (i + 0.5) * fs, py = cy + (j + 0.5) * fs;
-      if (Math.hypot(px - cx, py - cy) > R * 0.96 || Math.abs(px - cx) < R * 0.06) continue;
-      ctx.moveTo(px + q * 1.5, py); ctx.arc(px, py, q * 1.5, 0, TAU); ctx.moveTo(px - q, py - q); ctx.lineTo(px + q, py + q); ctx.moveTo(px + q, py - q); ctx.lineTo(px - q, py + q);
+    ctx.globalAlpha = dim;
+    ctx.fillStyle = 'rgba(6,10,8,0.92)'; ctx.beginPath(); ctx.arc(cx, cy, R * 1.04, 0, TAU); ctx.fill();
+    // field symbols (B into the screen): they spread out from the centre when the magnet comes on, bright at first
+    if (aMag > 0) {
+      const fs = Math.max(20, R * 0.17), q = Math.min(3, fs * 0.13), glowB = 0.16 + 0.24 * clamp(1 - (t - T_FIELD - 0.8) / 1.4, 0, 1);
+      ctx.strokeStyle = 'rgb(179,166,255)'; ctx.lineWidth = 1;
+      for (let i = -7; i <= 7; i++) for (let j = -7; j <= 7; j++) {
+        const px = cx + (i + 0.5) * fs, py = cy + (j + 0.5) * fs, d = Math.hypot(px - cx, py - cy);
+        if (d > R * 0.96 || Math.abs(px - cx) < R * 0.06) continue;
+        const a = clamp((t - T_FIELD) * 2.6 - d / R, 0, 1) * glowB; if (a <= 0.005) continue;
+        ctx.globalAlpha = dim * a; ctx.beginPath();
+        ctx.moveTo(px + q * 1.5, py); ctx.arc(px, py, q * 1.5, 0, TAU); ctx.moveTo(px - q, py - q); ctx.lineTo(px + q, py + q); ctx.moveTo(px + q, py - q); ctx.lineTo(px - q, py + q);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = dim;
     }
-    ctx.stroke();
-    // the RF voltage flips each half-turn: the dees glow red (+) and blue (−)
-    const w = R * 0.06, h = Math.sqrt(R * R - w * w / 4), th = Math.acos(w / 2 / R);
-    const deeR = new Path2D(); deeR.moveTo(cx + w / 2, cy - h); deeR.arc(cx, cy, R, -th, th, false); deeR.closePath();
-    const deeL = new Path2D(); deeL.moveTo(cx - w / 2, cy + h); deeL.arc(cx, cy, R, Math.PI - th, Math.PI + th, false); deeL.closePath();
-    const a = Math.abs(pol) * 0.22;
-    ctx.fillStyle = pol > 0 ? `rgba(229,72,63,${a})` : `rgba(62,126,230,${a})`; ctx.fill(deeL);
-    ctx.fillStyle = pol > 0 ? `rgba(62,126,230,${a})` : `rgba(229,72,63,${a})`; ctx.fill(deeR);
-    ctx.save(); ctx.shadowColor = 'rgba(255,140,60,0.6)'; ctx.shadowBlur = 14; ctx.strokeStyle = 'rgba(232,168,106,0.95)'; ctx.lineWidth = 2; ctx.stroke(deeL); ctx.stroke(deeR); ctx.restore();
-    // ---- the spiral and the particle
-    let px = null, py = null;
+    // ---- the two D's: they appear when the pushes start; the voltage flips each half-turn, + red and − blue
+    if (aDee > 0) {
+      ctx.save(); ctx.globalAlpha = dim * aDee;
+      const w = R * 0.06, h = Math.sqrt(R * R - w * w / 4), th = Math.acos(w / 2 / R);
+      const deeR = new Path2D(); deeR.moveTo(cx + w / 2, cy - h); deeR.arc(cx, cy, R, -th, th, false); deeR.closePath();
+      const deeL = new Path2D(); deeL.moveTo(cx - w / 2, cy + h); deeL.arc(cx, cy, R, Math.PI - th, Math.PI + th, false); deeL.closePath();
+      const a = Math.abs(pol) * 0.22;
+      ctx.fillStyle = pol > 0 ? `rgba(229,72,63,${a})` : `rgba(62,126,230,${a})`; ctx.fill(deeL);
+      ctx.fillStyle = pol > 0 ? `rgba(62,126,230,${a})` : `rgba(229,72,63,${a})`; ctx.fill(deeR);
+      ctx.shadowColor = 'rgba(255,140,60,0.6)'; ctx.shadowBlur = 14; ctx.strokeStyle = 'rgba(232,168,106,0.95)'; ctx.lineWidth = 2; ctx.stroke(deeL); ctx.stroke(deeR); ctx.shadowBlur = 0;
+      if (t >= T0 && t < T_EXIT) {                         // which D is + and which is − right now
+        const sa = Math.abs(pol) * 0.5, sz = Math.round(R * 0.2);
+        text(ctx, pol > 0 ? '+' : '−', cx - R * 0.6, cy, { size: sz, w: 700, color: pol > 0 ? `rgba(255,140,130,${sa})` : `rgba(140,180,255,${sa})` });
+        text(ctx, pol > 0 ? '−' : '+', cx + R * 0.6, cy, { size: sz, w: 700, color: pol > 0 ? `rgba(140,180,255,${sa})` : `rgba(255,140,130,${sa})` });
+      }
+      ctx.restore();
+    }
+    // ---- labels on the machine, one at a time above the coil
+    const yTop = cy - R * 1.2 - 16;
+    const aField = aMag * clamp(1 - (t - T_DEES) / 0.4, 0, 1), aGap = clamp((t - T_DEES - 0.3) / 0.4, 0, 1) * clamp(1 - (t - T_EXIT) / 0.4, 0, 1);
+    if (aField > 0) { ctx.globalAlpha = dim * aField; text(ctx, '⊗  magnetic field, into the screen', cx, yTop, { size: 15, color: '#cfc7ff' }); }
+    if (aGap > 0) { ctx.globalAlpha = dim * aGap; text(ctx, 'the gap: a push every time it crosses', cx, yTop, { size: 15, color: '#ffd9a8' }); ctx.strokeStyle = 'rgba(255,217,168,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx, yTop + 10); ctx.lineTo(cx, cy - R * 1.0); ctx.stroke(); }
+    ctx.globalAlpha = dim;
+    // ---- the path so far, and where the proton is now
+    ctx.lineCap = 'round'; ctx.lineWidth = Math.max(2, R * 0.012);
+    const yb = cy + s0.cy + r0, xIn = cx - v * (T_FIELD - T_IN);
+    let px = null, py = null, ang = null;
+    if (t >= T_IN) {                                       // the straight line it came in on, fading once it circles
+      const xe = t < T_FIELD ? cx - v * (T_FIELD - t) : cx, a = t < T_FIELD ? 0.8 : 0.8 * clamp(1 - (t - T_FIELD) / 1.2, 0, 1);
+      if (a > 0) { const lg = ctx.createLinearGradient(xIn, yb, xe, yb); lg.addColorStop(0, 'rgba(255,200,150,0)'); lg.addColorStop(1, `rgba(255,200,150,${a})`); ctx.strokeStyle = lg; ctx.beginPath(); ctx.moveTo(Math.max(xIn, -20), yb); ctx.lineTo(xe, yb); ctx.stroke(); }
+    }
+    if (t >= T_FIELD) {                                    // the first circle, with the magnet alone
+      const sweep = Math.min(TAU, TAU * (t - T_FIELD) / P), a = t < T0 ? 0.9 : 0.9 * clamp(1 - (t - T0) / 0.8, 0.45, 1);
+      ctx.strokeStyle = pal[0]; ctx.globalAlpha = dim * a;
+      ctx.beginPath(); ctx.arc(cx, cy + s0.cy, r0, Math.PI / 2, Math.PI / 2 - sweep, true); ctx.stroke(); ctx.globalAlpha = dim;
+    }
+    if (t >= T_IN && t < T_FIELD) { px = cx - v * (T_FIELD - t); py = yb; ang = null; }
+    else if (t >= T_FIELD && t < T0) { ang = Math.PI / 2 - TAU * (t - T_FIELD) / P; px = cx + Math.cos(ang) * r0; py = cy + s0.cy + Math.sin(ang) * r0; }
     if (t >= T0) {
       const nDone = Math.min(HALF, kNow), trailA = t < T_EXIT ? 1 : clamp(1 - (t - T_EXIT) / 0.7, 0, 1);
-      ctx.lineCap = 'round'; ctx.lineWidth = Math.max(2, R * 0.012);
       if (trailA > 0) for (let i = 0; i <= Math.min(nDone, HALF - 1); i++) {
         const s = sp[i], f = i < nDone ? 1 : frac;
         ctx.strokeStyle = pal[Math.round(i / (HALF - 1) * 63)]; ctx.globalAlpha = dim * trailA * 0.95;
         ctx.beginPath(); ctx.arc(cx, cy + s.cy, s.r, s.a0, s.a0 - Math.PI * f, true); ctx.stroke();
       }
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = dim;
       if (kNow < HALF) {
-        [px, py] = posOn(g, sp[kNow], frac);
+        [px, py] = posOn(g, sp[kNow], frac); ang = sp[kNow].a0 - Math.PI * frac;
         if (kNow !== st.k) {                            // crossing the gap: a push, a spark and a thump
           st.k = kNow;
-          if (kNow > 0) { const [sx, sy] = scr(cx, py); sparkBurst(sx, sy, 10, 160); audio.thunk(kNow / HALF); }
+          if (kNow > 0) { sparkBurst(cx, py, 10, 160); audio.thunk(kNow / HALF); if (kNow <= 5) st.pushes.push({ x: cx, y: py, t0: t }); }
         }
       } else if (st.k < HALF) {
         st.k = HALF; const [ex, ey] = posOn(g, sp[HALF - 1], 1);
         sparkBurst(ex, ey, 40, 360); st.flash = 0.26; st.flashCol = '255,214,150'; audio.zap();
       }
     }
+    // "+ push" rises from the gap at the first few pushes
+    for (const q of st.pushes) { const f = (t - q.t0) / 0.8; if (f >= 1) continue; ctx.globalAlpha = dim * (1 - f); text(ctx, '+ push', q.x + 12, q.y - 14 - f * 22, { size: 14, align: 'left', color: '#ffe0a0' }); }
+    st.pushes = st.pushes.filter(q => t - q.t0 < 0.8); ctx.globalAlpha = dim;
+    // velocity and force while the magnet alone bends it: the force always points to the centre
+    const aArr = t < T_FIELD ? 0 : clamp((t - T_FIELD) / 0.3, 0, 1) * clamp(1 - (t - T0) / 0.35, 0, 1);
+    if (aArr > 0 && px !== null && ang !== null) {
+      const ux = Math.sin(ang), uy = -Math.cos(ang), fx = -Math.cos(ang), fy = -Math.sin(ang), Lv = Math.max(34, R * 0.3), Lf = Math.max(28, R * 0.22);
+      ctx.globalAlpha = dim * aArr;
+      arrow(ctx, px, py, px + ux * Lv, py + uy * Lv, '#7fe0a0', 2.4); arrow(ctx, px, py, px + fx * Lf, py + fy * Lf, '#ff8fd0', 2.4);
+      text(ctx, 'velocity', px + ux * (Lv + 16), py + uy * (Lv + 16), { size: 13, color: '#a8f0c0' });
+      text(ctx, 'force', px + fx * (Lf + 14), py + fy * (Lf + 14), { size: 13, color: '#ffb0e0' });
+      ctx.globalAlpha = dim;
+    }
+    // the proton's name tag while it flies in
+    const aTag = t < T_IN ? 0 : clamp((t - T_IN) / 0.3, 0, 1) * clamp(1 - (t - T_FIELD - 0.2) / 0.4, 0, 1);
+    if (aTag > 0 && px !== null) { ctx.globalAlpha = dim * aTag; text(ctx, 'proton (+)', px, py - Math.max(22, R * 0.1), { size: 14, color: '#ffe7c4' }); ctx.globalAlpha = dim; }
     ctx.restore();
-    if (at) { ctx.save(); ctx.globalAlpha = a3; ctx.drawImage(cv3, 0, 0, W, H); ctx.restore(); }
+    // "every lap takes the same time": a dot for each push, evenly spaced in time, under the caption
+    const cap4 = st.story && st.story.querySelector('.cap[data-n="4"]');
+    const aBeat = clamp((t - T_BEAT) / 0.3, 0, 1) * clamp(1 - (t - T_EXIT - 0.2) / 0.4, 0, 1);
+    if (aBeat > 0 && cap4) {
+      const r = cap4.getBoundingClientRect(), o = st.el.getBoundingClientRect(), side = st.story.classList.contains('is-side');
+      const gapX = 18, n = HALF - 1, wid = (n - 1) * gapX, x0 = side ? r.left - o.left + 6 : r.left - o.left + r.width / 2 - wid / 2, y0 = r.bottom - o.top + 16;
+      ctx.save(); ctx.globalAlpha = aBeat;
+      for (let k = 1; k <= n; k++) {
+        const x = x0 + (k - 1) * gapX, lit = k <= kNow, fresh = lit && k === kNow ? 1 - frac : 0;
+        if (fresh > 0) { ctx.fillStyle = `rgba(255,200,120,${0.35 * fresh})`; ctx.beginPath(); ctx.arc(x, y0, 9, 0, TAU); ctx.fill(); }
+        ctx.beginPath(); ctx.arc(x, y0, 4.2, 0, TAU);
+        if (lit) { ctx.fillStyle = '#ffc878'; ctx.fill(); } else { ctx.strokeStyle = 'rgba(255,200,120,0.5)'; ctx.lineWidth = 1.2; ctx.stroke(); }
+      }
+      text(ctx, 'one dot per push: always the same time apart', side ? x0 - 2 : x0 + wid / 2, y0 + 20, { size: 13, align: side ? 'left' : 'center', color: 'rgba(214,224,218,0.8)' });
+      ctx.restore();
+    }
     // ---- the extracted beam, steered onto the name: a CRT writing with a particle beam
     const [ex, ey] = posOn(g, sp[HALF - 1], 1);
     const u = clamp((t - T_BURN0) / T_BURN, 0, 1), ue = u < 1 ? 1 - Math.pow(1 - u, 1.6) * (1 - u * 0.15) : 1;
@@ -191,15 +226,13 @@
       ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(bx, by, g.th * 0.45, 0, TAU); ctx.fill();
       ctx.restore();
       if (t >= T_BURN0 && u < 1 && !reduceMotion) {
-        for (let i = 0; i < 5; i++) { const an = -Math.PI / 2 + (Math.random() - 0.5) * 2.6, v = 180 + Math.random() * 420; st.sparks.push({ x: hx, y: hy + (Math.random() - 0.5) * g.th * 0.5, vx: Math.cos(an) * v - 60, vy: Math.sin(an) * v, life: 0.3 + Math.random() * 0.5, age: 0 }); }
+        for (let i = 0; i < 5; i++) { const an = -Math.PI / 2 + (Math.random() - 0.5) * 2.6, vv = 180 + Math.random() * 420; st.sparks.push({ x: hx, y: hy + (Math.random() - 0.5) * g.th * 0.5, vx: Math.cos(an) * vv - 60, vy: Math.sin(an) * vv, life: 0.3 + Math.random() * 0.5, age: 0 }); }
         st.crackle += dt; if (st.crackle > 0.07) { st.crackle = 0; audio.spark(); }
       }
-    } else if (px !== null && a2 > 0.01) {
-      ctx.save(); ctx.globalAlpha = a2;
+    } else if (px !== null) {
       const gl = ctx.createRadialGradient(px, py, 0, px, py, Math.max(16, R * 0.08)); gl.addColorStop(0, 'rgba(255,245,220,1)'); gl.addColorStop(0.3, 'rgba(255,170,90,0.75)'); gl.addColorStop(1, 'rgba(255,120,60,0)');
       ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(px, py, Math.max(16, R * 0.08), 0, TAU); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(px, py, Math.max(2.5, R * 0.012), 0, TAU); ctx.fill();
-      ctx.restore();
     }
     // embers drift up from the freshly cut letters
     if (!reduceMotion) {
@@ -236,10 +269,8 @@
   // ---- the beats of the timeline (CSS does the type, the canvas does the light) ----
   function beats(prevT, t) {
     const hit = T => prevT < T && t >= T;
-    if (hit(T_A)) { setPhase('is-cold-a'); audio.scribble(0.45); }
-    if (hit(T_B)) { setPhase('is-cold-b'); audio.scribble(1.05); }
-    if (hit(T_C)) { setPhase('is-cold-c'); audio.scribble(0.6); }
-    if (hit(T_COLD_OUT)) setPhase('is-cold-out');
+    for (const [T, n] of STEPS) if (hit(T)) { showStep(n); audio.scribble(0.55); }
+    if (hit(T_QUENCH - 0.5)) setPhase('is-story-out');
     if (hit(T_BURN0)) setPhase('is-burning');
     if (hit(T_QUENCH)) { setPhase('is-quenched'); st.flash = 0.2; st.flashCol = '255,236,206'; audio.whoosh(); }
     if (hit(T_STAMP)) { setPhase('is-stamped'); setPhase('is-shake'); audio.crunch(); setTimeout(() => setPhase('is-shake', false), 360); }
@@ -255,13 +286,14 @@
     try { draw(dt); } catch (err) { console.error(err); finish(); }
     st.raf = requestAnimationFrame(loop);
   }
-  function size() { if (!st.el) return; st.W = st.el.clientWidth; st.H = st.el.clientHeight; }
+  function size() { if (!st.el) return; st.W = st.el.clientWidth; st.H = st.el.clientHeight; layoutStory(); }
 
   // jump to the final title card
   function finish() {
     if (st.t >= T_READY) return;
     const prev = st.t; st.t = T_READY + 0.01; st.sparks = []; st.k = HALF;
-    for (const c of ['is-cold-a', 'is-cold-b', 'is-cold-c', 'is-cold-out', 'is-burning', 'is-quenched', 'is-stamped', 'is-eq', 'is-plate', 'is-signed', 'is-ready']) setPhase(c);
+    showStep(5); st.pushes = [];
+    for (const c of ['is-story-out', 'is-burning', 'is-quenched', 'is-stamped', 'is-eq', 'is-plate', 'is-signed', 'is-ready']) setPhase(c);
     setPhase('is-instant'); requestAnimationFrame(() => requestAnimationFrame(() => setPhase('is-instant', false)));
     st.flash = 0; if (prev < T_READY) { /* silent jump */ }
   }
@@ -288,10 +320,10 @@
 
   function play(auto) {
     st.el = $('#intro'); if (!st.el) return;
-    st.cv = $('#introCv'); st.burn = $('#introBurn'); st.name = $('#introName');
+    st.cv = $('#introCv'); st.burn = $('#introBurn'); st.name = $('#introName'); st.story = $('#introStory');
     st.back = auto ? null : document.activeElement;
     st.el.className = 'intro'; st.el.hidden = false;
-    st.t = 0; st.last = 0; st.k = -1; st.sparks = []; st.embers = []; st.flash = 0; st.emberT = 0;
+    st.t = 0; st.last = 0; st.k = -1; st.sparks = []; st.embers = []; st.pushes = []; st.flash = 0; st.emberT = 0; showStep(0);
     st.on = true; size();
     document.addEventListener('keydown', onKey, true);
     st.el.focus({ preventScroll: true });

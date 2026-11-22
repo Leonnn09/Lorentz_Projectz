@@ -5,7 +5,7 @@
 (() => {
   'use strict';
   const { $, $$, clamp, TAU, store, skin, audio, missions, fitCanvas, reduceMotion, hexA } = CL;
-  const NAMES = ['home', 'lab', 'gauss', 'race', 'collide', 'targets', 'physics'];
+  const NAMES = ['home', 'lab', 'gauss', 'collide', 'physics'];
   let current = null;
 
   /* ---------- screens ---------- */
@@ -18,6 +18,10 @@
     for (const b of $$('.nav-btn')) b.classList.toggle('is-active', b.dataset.go === name);
     if (push && location.hash !== '#' + name) { try { history.replaceState(null, '', '#' + name); } catch (_) { /* sandboxed */ } }
     if (CL.screens[name] && CL.screens[name].show) CL.screens[name].show();
+    if (CL.reallife) CL.reallife.close();
+    CL.bus.emit('screen', name);
+    const sw = $('#sweep');
+    if (sw && !reduceMotion && name !== 'home') { sw.classList.remove('is-on'); void sw.offsetWidth; sw.classList.add('is-on'); }
     if (name === 'home') { updateHomeMissions(); requestAnimationFrame(sizeHome); setTimeout(sizeHome, 300); }
     const scr = $('#screen-' + name); if (scr) scr.scrollTop = 0;
   }
@@ -144,11 +148,37 @@
     for (const s of out) s.cy -= shift;
     return out;
   }
+  /* the bench as a cloud chamber: now and then a faint trail of droplets appears where a particle from
+     the sky went through (a short thick alpha track, a long thin muon, or an electron curling in a field) and fades */
+  function drawTracks(ctx, dt, W, H) {
+    const T = home.tracks || (home.tracks = []);
+    home.trackT = (home.trackT || 0) - dt;
+    if (home.trackT <= 0 && T.length < 6) {
+      home.trackT = 0.7 + Math.random() * 1.1;
+      const kind = Math.random(), x = Math.random() * W, y = Math.random() * H, a = Math.random() * TAU, pts = [];
+      if (kind < 0.35) { const L = 30 + Math.random() * 40; for (let s = 0; s < L; s += 1.6) pts.push([x + Math.cos(a) * s, y + Math.sin(a) * s, 1.5]); }
+      else if (kind < 0.75) { const L = 300 + Math.random() * 500; for (let s = 0; s < L; s += 4.5) pts.push([x + Math.cos(a) * s, y + Math.sin(a) * s, 0.8]); }
+      else { let r = 26 + Math.random() * 20, th = a, px = x, py = y; const turn = Math.random() < 0.5 ? 1 : -1; for (let i = 0; i < 160 && r > 3; i++) { th += turn * 2.6 / r; px += Math.cos(th) * 2.6; py += Math.sin(th) * 2.6; r *= 0.988; pts.push([px, py, 0.9]); } }
+      for (const q of pts) { q[0] += (Math.random() - 0.5) * 1.6; q[1] += (Math.random() - 0.5) * 1.6; }
+      T.push({ pts, age: 0, life: 1.6 + Math.random() * 1.4 });
+    }
+    const ink = skin.c('--note-ink');
+    for (const tr of T) {
+      tr.age += dt;
+      const k = tr.age < 0.12 ? tr.age / 0.12 : Math.max(0, 1 - (tr.age - 0.12) / tr.life);
+      if (k <= 0) continue;
+      ctx.fillStyle = hexA(ink, 0.16 * k);
+      const spread = 1 + tr.age * 1.2;                 // droplets drift apart as the trail fades
+      for (const [x, y, r] of tr.pts) { ctx.beginPath(); ctx.arc(x, y, r * spread, 0, TAU); ctx.fill(); }
+    }
+    home.tracks = T.filter(tr => tr.age < tr.life + 0.12);
+  }
   function drawHome(dt) {
     const W = home.W, H = home.H; if (!W) return;
     const { ctx } = fitCanvas(home.cv, W, H);
     ctx.clearRect(0, 0, W, H);
     home.t += dt * (reduceMotion ? 0.25 : 1);
+    if (!reduceMotion) drawTracks(ctx, dt, W, H);
     const g = heroGeom(), st = heroStatic(g), cx = g.cx, cy = g.cy;
     ctx.save();
     if (!g.wide) ctx.globalAlpha = 0.42;
@@ -228,16 +258,6 @@
         if (on) { ctx.fillStyle = 'rgba(255,160,60,0.35)'; ctx.beginPath(); ctx.arc(xc, y, cw * 1.1, 0, TAU); ctx.fill(); }
       }
       if (sx > 0) { ctx.fillStyle = '#c4cbd2'; ctx.fillRect(sx - 9, y - 3, 18, 6); if (ph > 0.55) { const gr = ctx.createLinearGradient(sx - 40, 0, sx - 9, 0); gr.addColorStop(0, 'rgba(255,220,170,0)'); gr.addColorStop(1, 'rgba(255,220,170,0.6)'); ctx.fillStyle = gr; ctx.fillRect(sx - 40, y - 2, 31, 4); } }
-    } else if (ic.kind === 'race') {
-      const cols = ['#ff6b6b', '#ffd43b', '#4dabf7'], spd = [1, 0.5, 3.2];
-      ctx.strokeStyle = 'rgba(200,214,204,0.6)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(W * 0.2, H * 0.12); ctx.lineTo(W * 0.2, H * 0.88); ctx.stroke();
-      cols.forEach((c, i) => {
-        const r = H * (0.12 + 0.12 * i), ph = Math.min(1, ((t * 0.45 * spd[i]) % 1.6));
-        ctx.strokeStyle = hexA(c, 0.85); ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(W * 0.2, H * 0.5 - r, r, Math.PI / 2, Math.PI / 2 - Math.PI * ph, true); ctx.stroke();
-        const a = Math.PI / 2 - Math.PI * ph, x = W * 0.2 + Math.cos(a) * r, y = H * 0.5 - r + Math.sin(a) * r;
-        ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, 4, 0, TAU); ctx.fill();
-      });
     } else if (ic.kind === 'collide') {
       const ph = (t * 0.6) % 1.4;
       if (ph < 0.5) {
@@ -254,12 +274,6 @@
         });
         if (f < 0.15) { ctx.fillStyle = `rgba(255,255,255,${0.8 * (1 - f / 0.15)})`; ctx.fillRect(0, 0, W, H); }
       }
-    } else if (ic.kind === 'targets') {
-      ['#3d8bfd', '#e64980', '#3d8bfd'].forEach((c, i) => { ctx.fillStyle = hexA(c, 0.55); ctx.fillRect(W * (0.38 + i * 0.16), H * 0.2, W * 0.15, H * 0.6); });
-      const ph = (t * 0.7) % 1.2, x = W * 0.05 + Math.min(1, ph) * W * 0.6;
-      ctx.strokeStyle = 'rgba(255,107,107,0.8)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(x, cy); ctx.stroke();
-      if (ph >= 1) { const f = (ph - 1) / 0.2; const gl = ctx.createRadialGradient(W * 0.65, cy, 0, W * 0.65, cy, 22 * (1 - f) + 6); gl.addColorStop(0, 'rgba(255,230,140,1)'); gl.addColorStop(1, 'rgba(255,120,60,0)'); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(W * 0.65, cy, 26, 0, TAU); ctx.fill(); }
-      else { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, cy, 3.5, 0, TAU); ctx.fill(); }
     } else {
       ctx.font = `300 ${Math.round(s * 0.24)}px "Barlow Condensed", "Arial Narrow", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ['F = qv × B', 'r = p / qB', 'f = qB / 2πm'].forEach((l, i) => { ctx.save(); ctx.shadowColor = 'rgba(255,110,20,0.9)'; ctx.shadowBlur = 8; ctx.fillStyle = `rgba(255,207,158,${0.45 + 0.55 * (0.5 + 0.5 * Math.sin(t * 1.5 + i * 2))})`; ctx.fillText(l, cx, H * (0.25 + 0.25 * i)); ctx.restore(); });
@@ -272,12 +286,13 @@
     { sel: null, title: 'Welcome to Project Lorentz', text: 'The name comes from the Lorentz force, F = q(E + v × B). A cyclotron uses both parts of it: the electric field gives the particle a push each time it crosses the gap, and the magnetic field bends it round in a circle so it comes back for the next push. This tour shows you around the Cyclotron screen in under a minute.' },
     { sel: '#stageWrap', title: 'The machine from above', text: 'The particle starts in the middle and spirals outwards between the two copper dees. Red and blue show which dee is positive. Drag the edge of the dees to make the machine bigger or smaller, drag the striped corner to resize the view, and scroll or pinch to zoom. The 3D key at the top right shows the whole electromagnet in 3D, and the key under it fills the screen; every other screen has both, plus a Ride button.' },
     { sel: '#btnRide', title: 'Ride the particle', text: 'Fly along with the particle, seen from just behind it. With sound on, you hear a thump at every push across the gap and a tick at every peak of the voltage. When the two stay together the beat is steady: that is the cyclotron resonance. Press V to switch views.' },
-    { sel: '#accMagnet', title: 'Build the electromagnet', text: 'Choose the coils, turns per coil, current and pole gap: B = μ₀NI/g. Or load a real machine from the menu above it.' },
+    { sel: '#accMagnet', title: 'Build the electromagnet', text: 'Choose the number of coils, the turns per coil and the current: more turns and more current make a stronger field, B = μ₀NI/g. Intermediate also lets you change the pole gap g. Or load a real machine from the menu above it.' },
     { sel: '#screen-lab .timebar', title: 'Play, replay and record', text: 'Play, step, change speed or drag the timeline. After a run, Replay 0.1× shows the final orbits in slow motion with every push labelled. Record saves the run to your notebook.' },
     { sel: '#screen-lab .tiles', title: 'Live readouts', text: 'Speed, kinetic energy, orbit radius and laps, glowing like the nixie tubes on old lab instruments.' },
     { sel: '#screen-lab .data', title: 'Every number explained', text: 'The notebook explains each quantity in words. Show working puts your own numbers into each formula, step by step.' },
-    { sel: '.lvl', title: 'Simple or full detail', text: 'Simple hides the expert controls and adds plain-language notes and ? buttons. Full detail shows all the theory and every control.' },
-    { sel: '.nav-screens', title: 'More to explore', text: 'Fire a Gauss gun, race particles, smash them together in the collider, fire them into targets, and test yourself in the physics quiz. Each screen has missions.' },
+    { sel: '.lvl', title: 'Beginner or Intermediate', text: 'Beginner keeps only the main controls and adds plain-language notes and ? buttons. Intermediate adds the extra controls (pole gap, RF mode, relativity, experiments, display tools) and every step of the working.' },
+    { sel: '#btnReal', title: 'Where is this used in real life?', text: 'This key shows where the physics on the current screen is used outside class: PET scans and cancer therapy, Indonesia’s own DECY-13 cyclotron, maglev trains, carbon dating, auroras, the LHC and the chips in your phone. Four of them you can run yourself: the maglev train and the jet catapult (from the Gauss gun), the aurora and the LHC (from the cyclotron), each with a card that shows why it is the same physics.' },
+    { sel: '.nav-screens', title: 'More to explore', text: 'Fire a Gauss gun, smash particles together in the Collider, and test yourself in the physics quiz. Each screen has missions, and a Real life, simulated panel with real machines to run: a maglev train, a jet catapult, the aurora and the LHC.' },
   ];
   let tourI = -1;
   function tourStart() { showScreen('lab', true); tourI = 0; $('#tour').hidden = false; setTimeout(tourStep, 250); }
@@ -312,6 +327,15 @@
     for (const b of $$('[data-go]')) b.addEventListener('click', () => { audio.unlock(); showScreen(b.dataset.go, true); });
     $('#btnSound').addEventListener('click', () => { audio.unlock(); audio.setMuted(!audio.muted); syncSound(); if (!audio.muted) audio.beep(660, 0.08); });
     themeMenu();
+    if (CL.reallife) CL.reallife.init();
+    if (CL.realsim) { try { CL.realsim.init(); } catch (err) { console.error('realsim', err); } }
+    const scale = $('.scale');
+    if (scale && 'IntersectionObserver' in window && !reduceMotion) {
+      $$('.scale-svg .sc-mach, .scale-svg .sc-m, .scale-svg .sc-person', scale).forEach((el, i) => el.style.setProperty('--i', i));
+      scale.classList.add('will-reveal');
+      const ob = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { scale.classList.add('is-in'); ob.disconnect(); } }, { threshold: 0.35 });
+      ob.observe(scale);
+    }
     $('#btnFull').addEventListener('click', () => {
       try {
         if (document.fullscreenElement) document.exitFullscreen();
@@ -364,6 +388,7 @@
     last = now;
     try {
       if (current === 'home') { drawHome(dt); for (const ic of home.icons) drawIcon(ic, now / 1000); }
+      else if (CL.realsim && CL.realsim.host === current) CL.realsim.frame(now, dt);          // a real-life simulation is open inside this station
       else if (CL.screens[current] && CL.screens[current].frame) CL.screens[current].frame(now, dt);
     } catch (err) { if (!loop.warned) { loop.warned = true; console.error(err); } }
     requestAnimationFrame(loop);
@@ -376,7 +401,7 @@
     syncSound();
     home.cv = $('#homeBg');
     home.icons = $$('.hicon').map(cv => ({ cv, kind: cv.dataset.icon, w: 0, h: 0 }));
-    for (const k of ['lab', 'gauss', 'race', 'collide', 'targets', 'physics']) { try { CL.screens[k].init(); } catch (err) { console.error('init ' + k, err); } }
+    for (const k of ['lab', 'gauss', 'collide', 'physics']) { try { CL.screens[k].init(); } catch (err) { console.error('init ' + k, err); } }
     try { CL.guide.init(); } catch (err) { console.error('guide', err); }
     try { CL.intro.init(); } catch (err) { console.error('intro', err); }
     if (data && data.lab && CL.lab) CL.lab.restore(data.lab);
@@ -390,6 +415,12 @@
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { skin.read(); CL.bus.emit("skin", skin.name); sizeHome(); const s = CL.screens[current]; if (s && s.resize) s.resize(); });
     requestAnimationFrame(loop);
     cornerGuard();
+    // screens that are laid out to fit the window never scroll; if the browser scrolls one anyway
+    // (to show a focused element), put it back, so the view can't slide away and leave a blank screen
+    for (const el of $$('.screen')) {
+      if (el.id === 'screen-home' || el.id === 'screen-physics') continue;
+      el.addEventListener('scroll', () => { if (getComputedStyle(el).position === 'absolute' && (el.scrollTop || el.scrollLeft)) { el.scrollTop = 0; el.scrollLeft = 0; } });
+    }
   }
 
   /* ---------- keep our controls clear of a host's corner badge ----------
@@ -423,7 +454,7 @@
       w = nw; h = nh;
       document.body.classList.toggle('has-badge', w > 0);
       root.style.setProperty('--badge-w', w + 'px'); root.style.setProperty('--badge-h', h + 'px');
-      sizeHome(); const s = CL.screens[current]; if (s && s.resize) s.resize();
+      sizeHome(); const s = CL.screens[current]; if (s && s.resize) s.resize(); if (CL.realsim && CL.realsim.host) CL.realsim.resize();
     };
     const soon = () => { clearTimeout(timer); timer = setTimeout(scan, 120); };
     for (const el of [document.body, root]) new MutationObserver(soon).observe(el, { childList: true });

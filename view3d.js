@@ -82,10 +82,13 @@
       this.eye = [tgt[0] + cp * cy * dist, tgt[1] + cp * sy * dist, tgt[2] + sp * dist];
       this.Fw = [-cp * cy, -cp * sy, -sp]; this.Rw = [-sy, cy, 0]; this.Uw = cross(this.Rw, this.Fw);
       this.f = 0.5 * Math.min(W * 0.85, H * 1.05) / Math.tan((o.fov || this.home.fov) * Math.PI / 360);
-      this.cx = W / 2; this.cy = H / 2 + (o.lift || 0) * H;
+      this.cx = W / 2 + (o.shift || 0) * W; this.cy = H / 2 + (o.lift || 0) * H;
       this.near = Math.max(1e-5, dist * 0.02); this.dist = dist; this.tgt = tgt;
       this.lightS = [dot(LIGHT, this.Rw), -dot(LIGHT, this.Uw)];
       this.fog = o.fog === false ? null : { near: dist * (o.fogNear || 0.7), far: dist * (o.fogFar || 3.2), max: o.fogMax ?? 0.75 };
+      if (o.bg) this.bg = o.bg;
+      // a screen can paint its own backdrop (sky, sea, space); it gets the height of the horizon on the screen
+      if (o.backdrop) { o.backdrop(ctx, W, H, clamp(this.cy - this.f * Math.tan(pitch), -H, 2 * H), this); this.vignette = o.vignette !== false; return this; }
       // backdrop: a dark studio with a soft glow where the horizon is, and a vignette
       const g = ctx.createLinearGradient(0, 0, 0, H);
       g.addColorStop(0, '#0a100d'); g.addColorStop(0.5, '#0c1310'); g.addColorStop(1, '#040605');
@@ -345,21 +348,30 @@
     key.setAttribute('aria-label', 'Show in 3D');
     key.innerHTML = CUBE + '<span>3D</span>';
     group.insertBefore(key, group.firstChild);
+    // zoom: + and − step through the shared levels (CL.zoom), the level key shows the zoom and steps 1× → 2× → 3× → 1×.
+    // The camera cannot come closer than minDist or go further than maxDist, so the levels stop there.
+    const zLo = () => (sc.home.maxDist ? Math.max(0.5, sc.home.dist / sc.home.maxDist) : 0.5);
+    const zHi = () => (sc.home.minDist ? Math.min(128, sc.home.dist / sc.home.minDist) : 32);
+    const fitKey = () => group.querySelector('.zbtn-fit');
+    const syncKey = () => { if (ctl.on && CL.zoom) CL.zoom.show(fitKey(), clamp(sc.zoom, zLo(), zHi()), 'starting view'); };
+    const zoomBy = dir => { sc.zoom = CL.zoom.step(clamp(sc.zoom, zLo(), zHi()), dir, zLo(), zHi()); sc.spin = false; syncKey(); };
+    const zoomCycle = () => { const z = CL.zoom.cycle(clamp(sc.zoom, zLo(), zHi())); if (z === 1) sc.reset(); else { sc.zoom = Math.min(z, zHi()); sc.spin = false; } syncKey(); };
+    ctl.syncZoomKey = syncKey;
     let extra = [];
     if (own) {
-      extra = [['+', 'Zoom in', 1.25], ['−', 'Zoom out', 0.8], ['1×', 'Reset the 3-D camera', 0]].map(([t, lab, k]) => {
+      extra = [['+', 'Zoom in', 1], ['−', 'Zoom out', -1], ['1×', 'Zoom 1×. Press for 2×', 0]].map(([t, lab, k]) => {
         const b = document.createElement('button'); b.type = 'button'; b.className = 'zbtn' + (k === 0 ? ' zbtn-fit' : ''); b.textContent = t; b.title = lab; b.setAttribute('aria-label', lab); b.hidden = true;
-        b.addEventListener('click', () => { if (k) { sc.zoom = clamp(sc.zoom * k, 0.2, 40); sc.spin = false; } else sc.reset(); });
+        b.addEventListener('click', () => { if (k) zoomBy(k); else zoomCycle(); });
         group.appendChild(b); return b;
       });
     } else {
-      // the screen's own + − 1× keys drive the 3-D camera while the 3-D view is on
+      // the screen's own + − and level keys drive the 3-D camera while the 3-D view is on
       group.addEventListener('click', ev => {
         if (!ctl.on) return;
-        const b = ev.target.closest('button'); if (!b || b === key) return;
+        const b = ev.target.closest('button'); if (!b || b === key || b.classList.contains('zbtn-full')) return;
         ev.stopPropagation(); ev.preventDefault();
         const t = b.textContent.trim();
-        if (t === '+') { sc.zoom = clamp(sc.zoom * 1.25, 0.2, 40); sc.spin = false; } else if (t === '−') { sc.zoom = clamp(sc.zoom / 1.25, 0.2, 40); sc.spin = false; } else sc.reset();
+        if (b.classList.contains('zbtn-fit')) zoomCycle(); else if (t === '+') zoomBy(1); else if (t === '−') zoomBy(-1);
       }, true);
     }
     // ---- fullscreen: the view (with its control bar) fills the screen; falls back to filling the window
@@ -434,13 +446,14 @@
       if (opts.storeKey) store.set(opts.storeKey, ctl.on);
       if (ctl.on) { sc.lastT = 0; if (!quiet) { sc.tiltIn(); if (CL.sizeBadge) CL.sizeBadge(wrap, '3D view', 'drag to turn it · scroll or pinch to zoom · double-click to reset', 2600); } }
       if (opts.onToggle) opts.onToggle(ctl.on);
+      syncKey();
     }
     key.addEventListener('click', () => set(!ctl.on));
     group.addEventListener('keydown', ev => {
       if (!ctl.on) return;
       const k = { ArrowLeft: [-0.12, 0], ArrowRight: [0.12, 0], ArrowUp: [0, 0.08], ArrowDown: [0, -0.08] }[ev.key];
       if (!k) return;
-      ev.preventDefault(); ev.stopPropagation(); sc.spin = false; sc.yaw += k[0]; sc.pitch = clamp(sc.pitch + k[1], -0.15, 1.5);
+      ev.preventDefault(); ev.stopPropagation(); sc.spin = false; sc.yaw += k[0]; sc.pitch = clamp(sc.pitch + k[1], sc.home.minPitch ?? -0.15, 1.5);
     });
     // orbit: drag to turn, two fingers to pinch, wheel to zoom, double-click to reset
     const pts = new Map(); let pinch0 = 0, zoom0 = 1, last = null, armed = false;
@@ -459,10 +472,10 @@
       if (!ctl.on || !pts.has(ev.pointerId)) return;
       ev.stopPropagation();
       pts.set(ev.pointerId, [ev.clientX, ev.clientY]);
-      if (pts.size >= 2) { const [a, b] = [...pts.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pinch0 > 0) sc.zoom = clamp(zoom0 * d / pinch0, 0.2, 40); return; }
+      if (pts.size >= 2) { const [a, b] = [...pts.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pinch0 > 0) { sc.zoom = clamp(zoom0 * d / pinch0, 0.2, 40); syncKey(); } return; }
       const dx = ev.clientX - last[0], dy = ev.clientY - last[1]; last = [ev.clientX, ev.clientY];
       if (sc.driven) { sc.look[0] -= dx * 0.0085; sc.look[1] = clamp(sc.look[1] + dy * 0.0065, -1.1, 1.1); return; }
-      sc.yaw -= dx * 0.0085; sc.pitch = clamp(sc.pitch + dy * 0.0065, -0.15, 1.5);
+      sc.yaw -= dx * 0.0085; sc.pitch = clamp(sc.pitch + dy * 0.0065, sc.home.minPitch ?? -0.15, 1.5);
     }, true);
     const up = ev => {
       if (!pts.has(ev.pointerId)) return;
@@ -476,9 +489,9 @@
       if (!armed && !ev.ctrlKey && !ev.metaKey) { if (CL.sizeBadge && !ctl.wheelHinted) { ctl.wheelHinted = true; CL.sizeBadge(wrap, 'Zoom', 'click the view first, then scroll (or hold Ctrl and scroll)', 1800); } return; }
       ev.preventDefault(); ev.stopPropagation();
       const k = ev.deltaMode === 1 ? 0.05 : ev.deltaMode === 2 ? 1 : 0.0015 * (ev.ctrlKey ? 3 : 1);
-      sc.spin = false; sc.zoom = clamp(sc.zoom * Math.exp(-clamp(ev.deltaY, -300, 300) * k), 0.2, 40);
+      sc.spin = false; sc.zoom = clamp(sc.zoom * Math.exp(-clamp(ev.deltaY, -300, 300) * k), 0.2, 40); syncKey();
     }, { capture: true, passive: false });
-    wrap.addEventListener('dblclick', ev => { if (!ctl.on || !onCanvas(ev)) return; ev.stopPropagation(); ev.preventDefault(); sc.reset(); }, true);
+    wrap.addEventListener('dblclick', ev => { if (!ctl.on || !onCanvas(ev)) return; ev.stopPropagation(); ev.preventDefault(); sc.reset(); syncKey(); }, true);
     ctl.set = set;
     if (opts.storeKey && store.get(opts.storeKey, false)) set(true, true);
     return ctl;

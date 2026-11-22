@@ -91,11 +91,11 @@
 
   const MISSIONS = [
     { id: 'pet', title: 'PET isotope factory', goal: 'Extract a proton beam of 10–20 MeV: the energy range hospitals use to make fluorine-18 for PET scans.' },
-    { id: 'fifth', title: 'One fifth of light speed', goal: 'With relativity on, make a proton travel faster than 0.2c (20 % of the speed of light). Watch out for the RF timing.' },
+    { id: 'fifth', full: true, title: 'One fifth of light speed', goal: 'With relativity on, make a proton travel faster than 0.2c (20 % of the speed of light). Watch out for the RF timing.' },
     { id: 'compact', title: 'Pocket-sized cyclotron', goal: 'Extract protons with at least 5 MeV from dees no bigger than R = 0.25 m.' },
     { id: 'magnet', title: 'Strong but thrifty magnet', goal: 'Make a field of at least 1.5 T while the coil current is 40 A or less.' },
-    { id: 'electron', title: 'Rescue the electron', goal: 'With relativity on, extract an electron with at least 2 MeV. A fixed frequency will fail: why?' },
-    { id: 'record', title: 'Classic cyclotron record', goal: 'Fixed frequency, relativity on: extract protons with at least 20 MeV. The best classic machines reached about 22 MeV. (Hint: Advanced RF tuning.)' },
+    { id: 'electron', full: true, title: 'Rescue the electron', goal: 'With relativity on, extract an electron with at least 2 MeV. A fixed frequency will fail: why?' },
+    { id: 'record', full: true, title: 'Classic cyclotron record', goal: 'Fixed frequency, relativity on: extract protons with at least 20 MeV. The best classic machines reached about 22 MeV. (Hint: Advanced RF tuning.)' },
   ];
   for (const m of MISSIONS) missions.add({ ...m, screen: 'lab' });
 
@@ -200,8 +200,8 @@
     vref = Math.max(PHYS.kin(Kref, D.m, S.rel).v, 1e-9);
     // tiny orbits (e.g. electrons in a strong field): zoom in automatically
     if (!live && run.rot !== 0 && extent > 0 && extent < 0.2 * S.R) {
-      view.zoom = clamp(2 ** Math.floor(Math.log2(0.8 * S.R / extent)), 1, 128); view.panX = view.panY = 0; view.autoZoom = true;
-    } else if (view.autoZoom) { view.zoom = 1; view.panX = view.panY = 0; view.autoZoom = false; }
+      view.zoom = clamp(2 ** Math.floor(Math.log2(0.8 * S.R / extent)), 1, 128); view.panX = view.panY = 0; view.autoZoom = true; view.follow = false; syncZoomKey();
+    } else if (view.autoZoom) { view.zoom = 1; view.panX = view.panY = 0; view.autoZoom = false; syncZoomKey(); }
     playT = 0; endShown = false; skipping = false;
     lastKi = kickIndexAt(0);
     wallFx = extFx = targetFx = false; hotSpot = null; floaters = [];
@@ -313,9 +313,21 @@
   function zoomAt(z, sx = view.size / 2, sy = view.size / 2) {
     const p = toPhys(sx, sy);
     view.zoom = clamp(z, 1, 128);
-    if (view.zoom < 1.001) { view.zoom = 1; view.panX = view.panY = 0; }
+    if (view.zoom < 1.001) { view.zoom = 1; view.panX = view.panY = 0; view.follow = false; }
     else { view.panX = p.x - (sx - view.size / 2) / sc(); view.panY = p.y + (sy - view.size / 2) / sc(); }
     view.autoZoom = false; staticDirty = trailDirty = true; uiDirty = true;
+    syncZoomKey();
+  }
+  // the zoom keys: + and − step through the shared levels, the level key steps 1× → 2× → 3× → 1×. Zoomed in from a key,
+  // the view follows the particle so it never leaves the picture; dragging, the wheel or a pinch hand the view back.
+  function zoomKey(z) { zoomAt(z); view.follow = view.zoom > 1; uiDirty = true; }
+  function syncZoomKey() { if (!(v3 && v3.on)) CL.zoom.show($('#zoomFit'), view.zoom); }
+  function followParticle(dt) {
+    if (!view.follow || view.zoom <= 1 || !run || !run.segs || !run.segs.length) return;
+    const st = stateAt(playT), k = 1 - Math.exp(-Math.max(dt, 0) * 25);
+    const nx = view.panX + (st.x - view.panX) * k, ny = view.panY + (st.y - view.panY) * k;
+    if (Math.hypot(nx - view.panX, ny - view.panY) * sc() < 0.35) return;
+    view.panX = nx; view.panY = ny; staticDirty = trailDirty = true;
   }
 
   // Room for the machine view: on wide screens the stage column sits next to the 310 px control
@@ -522,7 +534,7 @@
       haloText(ctx, 'gap', cx, cy - Rp * 0.94, { font: '600 12.5px "Barlow Condensed", "Arial Narrow", sans-serif', color: 'rgba(255,214,160,0.95)', haloColor: pc.halo });
       if (Rp > 120) haloText(ctx, 'ion source', sx - 10, sy + 16, { font: '600 12.5px "Barlow Condensed", "Arial Narrow", sans-serif', color: pc.label, haloColor: pc.halo, align: 'right' });
       if (view.zoom === 1) {
-        haloText(ctx, `Copper coils: ${S.coils} × ${S.turns} turns`, 14, s - 58, { font: '600 13.5px "Barlow Condensed", "Arial Narrow", sans-serif', color: pc.copperLabel, haloColor: pc.outHalo, align: 'left' });
+        haloText(ctx, `Copper coil${S.coils > 1 ? 's' : ''}: ${S.coils} × ${S.turns} turns`, 14, s - 58, { font: '600 13.5px "Barlow Condensed", "Arial Narrow", sans-serif', color: pc.copperLabel, haloColor: pc.outHalo, align: 'left' });
         haloText(ctx, 'Steel yoke (magnet pole underneath)', 14, s - 40, { font: '600 13px "Barlow Condensed", "Arial Narrow", sans-serif', color: pc.outLabel, haloColor: pc.outHalo, align: 'left' });
       }
     }
@@ -583,7 +595,9 @@
     if (trailDirty || cur < trailDrawn) {
       trailCtx.setTransform(1, 0, 0, 1, 0, 0);
       trailCtx.clearRect(0, 0, trailCv.width, trailCv.height);
-      trailDrawn = 0; trailDirty = false;
+      // while the zoomed view follows the particle the trail is drawn again every frame, so on a long run (thousands of
+      // turns, too close together to tell apart at this zoom) only the last 300 turns are drawn
+      trailDrawn = view.follow && view.zoom > 1 ? Math.max(0, cur - 600) : 0; trailDirty = false;
     }
     if (cur > trailDrawn) { drawSegs(trailDrawn, cur); trailDrawn = cur; }
   }
@@ -1065,7 +1079,7 @@
     // ---- labels
     const L = (p, t2, c = '#dfe6df') => sc.label(p, t2, { color: c, font: '600 12.5px "Barlow Condensed", "Arial Narrow", sans-serif' });
     L([plateX * 0.75, -plateY, zTop + tp + lift + 0.04 * R], 'iron yoke (top pole lifted off)');
-    L([co * Math.cos(-0.9), co * Math.sin(-0.9), -z1 - hp * 0.5], `copper coils: ${S.coils} × ${S.turns} turns`, '#e8c8a8');
+    L([co * Math.cos(-0.9), co * Math.sin(-0.9), -z1 - hp * 0.5], `copper coil${S.coils > 1 ? 's' : ''}: ${S.coils} × ${S.turns} turns`, '#e8c8a8');
     L([-R * 0.55, R * 0.45, h + 0.03 * R], 'dee', '#f0c090'); L([R * 0.55, -R * 0.45, h + 0.03 * R], 'dee', '#f0c090');
     const gx = -1.24 * R, gy = -0.6 * R;
     sc.line([gx, gy, -z1], [gx, gy, z1], 'rgba(255,212,59,0.85)', 1.4, { group: 'hi' });
@@ -1085,6 +1099,7 @@
       const Bc = fieldCommanded();
       if (Math.sign(Bc) !== staticSign || Math.abs(Math.abs(Bc) - staticMag) > 0.08 * Math.max(staticMag, 1e-6)) staticDirty = true;
     }
+    followParticle(dt);
     if (staticDirty) drawStatic();
     const st = stateAt(playT);
     if (S.show.trail) updateTrail(st.i);
@@ -1844,7 +1859,7 @@
     } else {
       txt = 'Cyclotrons also accelerate deuterons, alpha particles and heavier ions, for nuclear-physics research and for making medical isotopes.';
     }
-    return { id: 'app', label: 'What could this beam do?', val: en(K, 3), sub: txt + ' Try it on the <b>Target Range</b> or in the <b>Collider</b>.' };
+    return { id: 'app', label: 'What could this beam do?', val: en(K, 3), sub: txt + ' Try it in the <b>Collider</b>.' };
   }
 
   function rowsPredict() {
@@ -1884,7 +1899,7 @@
     });
     rows.push({
       id: 'tacc', label: 'Acceleration time', val: si(pred.tAccClassical, 's', 4),
-      sub: 'The time from source to exit, t = N × T. Surprise: πBR²/(2V) contains no mass and no charge, so every particle takes the same time in the same machine (see the Grand Prix on the Race screen).' + (S.rel && pred.grel > 1.01 ? ' (Relativity makes the real time a little longer.)' : ''),
+      sub: 'The time from source to exit, t = N × T. Surprise: πBR²/(2V) contains no mass and no charge, so every particle takes the same time in the same machine.' + (S.rel && pred.grel > 1.01 ? ' (Relativity makes the real time a little longer.)' : ''),
       work: `t = πBR² / (2V) = π × ${BS()} × (${pl(R, 3)} m)² / (2 × ${e(V, 3)} V) = ${si(pred.tAccClassical, 's', 4)}`,
     });
     rows.push({
@@ -1907,7 +1922,7 @@
     const beamP = 10e-6 * (run.status === 'extracted' ? run.Kfinal : pred.Kmax) / C.e;
     rows.push({
       id: 'power', label: 'Beam power at 10 μA', val: si(beamP, 'W'),
-      sub: 'A real beam carries many particles. A beam current of 10 μA is about 6 × 10¹³ particles per second (for charge e); its power is P = I × K / e. On the Target Range you can fire this beam into materials.',
+      sub: 'A real beam carries many particles. A beam current of 10 μA is about 6 × 10¹³ particles per second (for charge e); its power is P = I × K / e.',
       work: `P = I × K/e = 10 μA × ${en(run.status === 'extracted' ? run.Kfinal : pred.Kmax, 4)} / e = ${si(beamP, 'W', 4)}`,
     });
     rows.push({ sec: 'Real world' });
@@ -2055,7 +2070,7 @@
     else if (st.s.type === 'line') { txt = 'No field: flying straight'; cls = 'is-warn'; }
     else if (skipping) { txt = 'Fast-forwarding…'; cls = 'is-run'; }
     else { txt = `Accelerating: lap ${Math.floor(st.revs) + 1} of about ${Math.max(1, Math.round(pred.nRev))}`; cls = 'is-run'; }
-    if (view.zoom > 1) txt += `  (zoom ×${pl(view.zoom, 2)})`;
+    if (view.zoom > 1 && !(v3 && v3.on) && !pov.on) txt += `  · zoom ${CL.zoom.label(view.zoom)}${view.follow ? ', following it' : ''}`;
     if (hud.textContent !== txt) hud.textContent = txt;
     const hc = 'hud hud-status ' + cls;
     if (hud.className !== hc) hud.className = hc;
@@ -2574,7 +2589,7 @@
     applyLimits();
     Object.assign(S, pr.set);
     S.preset = key;
-    view.zoom = 1; view.panX = view.panY = 0; view.autoZoom = false;
+    view.zoom = 1; view.panX = view.panY = 0; view.autoZoom = false; view.follow = false; syncZoomKey();
     fail = null; $('#labDown').hidden = true;
     applyLimits();
     buildRun(); syncControls();
@@ -2697,7 +2712,7 @@
       ev.preventDefault();
       const { sx, sy } = local(ev);
       const k = ev.deltaMode === 1 ? 0.05 : ev.deltaMode === 2 ? 1 : 0.0016 * (ev.ctrlKey ? 5 : 1);
-      zoomAt(view.zoom * Math.exp(-clamp(ev.deltaY, -300, 300) * k), sx, sy);
+      view.follow = false; zoomAt(view.zoom * Math.exp(-clamp(ev.deltaY, -300, 300) * k), sx, sy);
     }, { passive: false });
     viewCv.addEventListener('pointerdown', ev => {
       audio.unlock();
@@ -2714,6 +2729,7 @@
       }
       if (pts.size === 1 && rimHit(sx, sy)) { rim = { id: ev.pointerId }; rimLock = true; viewCv.setPointerCapture(ev.pointerId); viewCv.classList.add('is-rim'); return; }
       if (view.zoom <= 1) return;
+      view.follow = false;
       drag = { x: ev.clientX, y: ev.clientY, px: view.panX, py: view.panY };
       viewCv.setPointerCapture(ev.pointerId); viewCv.classList.add('is-dragging');
     });
@@ -2721,7 +2737,7 @@
       const { sx, sy } = local(ev);
       if (pts.has(ev.pointerId)) pts.set(ev.pointerId, { sx, sy });
       if (pov.on) { if (pov.drag) { pov.yaw = clamp(pov.drag.yaw0 - (ev.clientX - pov.drag.x) * 0.006, -2.6, 2.6); pov.pitch = clamp(pov.drag.pitch0 - (ev.clientY - pov.drag.y) * 0.004, -0.9, 0.7); } return; }
-      if (pinch && pts.size >= 2) { const p = pinchInfo(); zoomAt(pinch.z0 * p.d / pinch.d0, p.mx, p.my); return; }
+      if (pinch && pts.size >= 2) { const p = pinchInfo(); view.follow = false; zoomAt(pinch.z0 * p.d / pinch.d0, p.mx, p.my); return; }
       if (tapeDrag) { const p = toPhys(sx, sy); tape[tapeDrag] = p; return; }
       if (rim) { rimMove(sx, sy); return; }
       if (!drag && !pinch) { const near = rimHit(sx, sy); if (near !== rimHover) { rimHover = near; viewCv.classList.toggle('is-rim', near); } }
@@ -2843,13 +2859,14 @@
       endReplay(); setPlaying(false); playT = run.tEnd * (+ev.target.value) / 1000; lastKi = kickIndexAt(playT); uiDirty = true;
     });
 
-    $('#zoomIn').addEventListener('click', () => zoomAt(view.zoom * 2));
-    $('#zoomOut').addEventListener('click', () => zoomAt(view.zoom / 2));
-    $('#zoomFit').addEventListener('click', () => zoomAt(1));
+    $('#zoomIn').addEventListener('click', () => zoomKey(CL.zoom.step(view.zoom, 1, 1, 128)));
+    $('#zoomOut').addEventListener('click', () => zoomKey(CL.zoom.step(view.zoom, -1, 1, 128)));
+    $('#zoomFit').addEventListener('click', () => zoomKey(CL.zoom.cycle(view.zoom)));
+    syncZoomKey();
     bindPointer();
     v3 = CL.V3.attach($('#stageWrap'), { home: { yaw: -1.05, pitch: 0.7, dist: 1, target: [0, 0, 0], fov: 44, minDist: 0.01 }, storeKey: 'cl-3d-lab',
       full: { bar: () => $('#screen-lab .timebar'), onChange: () => layout() },
-      onToggle: on => { if (on) { lid = 0; if (pov.on) setRide(false); } else { staticDirty = trailDirty = true; } uiDirty = true; if (v3 && v3.full) layout(); } });
+      onToggle: on => { if (on) { lid = 0; if (pov.on) setRide(false); } else { staticDirty = trailDirty = true; setTimeout(syncZoomKey, 0); } uiDirty = true; if (v3 && v3.full) layout(); } });
     // drag the corner of the view, or the divider next to it, to resize the machine view
     const resizer = axis => ({
       axis,
@@ -2881,7 +2898,7 @@
       const keepSkinPrefs = { trail: S.trail, pal: S.pal };
       S = clone(DEFAULTS); Object.assign(S, keepSkinPrefs);
       ghost = null; $('#btnUnpin').hidden = true; $('#ghostLabel').textContent = '';
-      view.zoom = 1; view.panX = view.panY = 0; view.autoZoom = false;
+      view.zoom = 1; view.panX = view.panY = 0; view.autoZoom = false; view.follow = false; syncZoomKey();
       fail = null; $('#labDown').hidden = true; $('#labAlarm').classList.remove('is-on');
       applyLimits(); buildRun(); syncControls(); setPlaying(false);
       tape = { a: { x: 0, y: 0 }, b: { x: S.R, y: 0 } };

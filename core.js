@@ -312,7 +312,7 @@ const CL = (() => {
     return { ctx, dpr, w, h };
   }
 
-  /* ---------- generic plot (Bragg curve, race speeds, …) ---------- */
+  /* ---------- generic plot (graphs on every screen) ---------- */
   function plot(cv, cfg) {
     const r = cv.getBoundingClientRect();
     if (r.width < 20) return null;
@@ -477,12 +477,37 @@ const CL = (() => {
     render(el, screen) {
       if (!el) return;
       el.innerHTML = this.list.filter(m => m.screen === screen).map(m =>
-        `<li class="mission${this.done[m.id] ? ' is-done' : ''}"><span class="mk">${this.done[m.id] ? '✓' : ''}</span><div><div class="mt">${m.title}</div><div class="mg">${m.goal}</div></div></li>`).join('');
+        `<li class="mission${this.done[m.id] ? ' is-done' : ''}"><span class="mk">${this.done[m.id] ? '✓' : ''}</span><div><div class="mt">${m.title}${m.full ? ' <span class="m-full" title="Needs a control that only Intermediate shows">Intermediate</span>' : ''}</div><div class="mg">${m.goal}</div></div></li>`).join('');
     },
     reset() { this.done = {}; store.set('cl-missions2', {}); bus.emit('mission', null); },
   };
 
+  // ---- zoom keys (+, − and the level key): + and − step through these levels; the level key shows the zoom in use
+  // and steps 1× → 2× → 3× → back to 1× (from any other level it goes back to 1×)
+  const ZOOMS = [0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128];
+  const zoom = {
+    step(z, dir, lo = 1, hi = 128) {
+      const L = ZOOMS.filter(v => v >= lo - 1e-9 && v <= hi + 1e-9);
+      if (dir > 0) { for (const v of L) if (v > z * 1.02) return v; return hi; }
+      for (let i = L.length - 1; i >= 0; i--) if (L[i] < z / 1.02) return L[i];
+      return lo;
+    },
+    cycle: z => (Math.abs(z - 1) < 0.02 ? 2 : Math.abs(z - 2) < 0.04 ? 3 : 1),
+    label(z) { const r = z >= 10 ? Math.round(z) : z < 1 ? Math.round(z * 100) / 100 : Math.round(z * 10) / 10; return `${r}×`; },
+    // write the level onto a key, with a title that says what the next press does
+    show(btn, z, what = 'whole machine') {
+      if (!btn) return;
+      const t = zoom.label(z), next = zoom.cycle(z);
+      if (btn.textContent !== t) btn.textContent = t;
+      btn.classList.toggle('is-zoomed', Math.abs(z - 1) > 0.02);
+      btn.classList.toggle('is-long', t.length > 3);
+      const tip = `Zoom ${t}. Press for ${next === 1 ? `1× (the ${what})` : `${next}×`}`;
+      btn.title = tip; btn.setAttribute('aria-label', tip);
+    },
+  };
+
   return {
+    zoom,
     PHYS, C, fmt, $, $$, clamp, TAU, DEG, e, pl, en, len, si, pct, mev, rnd, reduceMotion, store, bus, skin, audio, FX, shaker,
     arrow, haloText, pill, hexA, hexRGB, palette, PALETTES, niceTicks, tickLabel, unitFor, timeUnit, energyUnit, lengthUnit, powUnit,
     fitCanvas, plot, screenBg, bindRange, segInit, toast, missions, grip, sizeBadge, screens: {},
