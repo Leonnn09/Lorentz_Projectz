@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Project Lorentz: a cyclotron you can build, break and ride</title>
-<meta name="description" content="Interactive cyclotron and particle physics lab: build the electromagnet, accelerate and collide particles, fire a coil gun, and run real machines such as a maglev train and the LHC.">
+<meta name="description" content="Interactive cyclotron and particle physics lab: build the electromagnet, accelerate particles, fire a coil gun, and run real machines such as a maglev train and a hospital cyclotron.">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' width='512' height='512'%3E%3Crect width='512' height='512' rx='112' fill='%230d1210'/%3E%3Cdefs%3E%3CradialGradient id='fv-disc' cx='42%25' cy='36%25' r='72%25'%3E%3Cstop offset='0' stop-color='%2318201c'/%3E%3Cstop offset='1' stop-color='%23060908'/%3E%3C/radialGradient%3E%3ClinearGradient id='fv-cu' x1='0.15' y1='0' x2='0.85' y2='1'%3E%3Cstop offset='0' stop-color='%23f4bd84'/%3E%3Cstop offset='0.35' stop-color='%23cf8645'/%3E%3Cstop offset='0.7' stop-color='%238f4c1f'/%3E%3Cstop offset='1' stop-color='%235a2c10'/%3E%3C/linearGradient%3E%3CradialGradient id='fv-dl' cx='25%25' cy='30%25' r='85%25'%3E%3Cstop offset='0' stop-color='%233b2416'/%3E%3Cstop offset='1' stop-color='%23140d09'/%3E%3C/radialGradient%3E%3CradialGradient id='fv-dr' cx='75%25' cy='30%25' r='85%25'%3E%3Cstop offset='0' stop-color='%23172a42'/%3E%3Cstop offset='1' stop-color='%23090f18'/%3E%3C/radialGradient%3E%3Cfilter id='fv-hot' x='-5%25' y='-300%25' width='110%25' height='700%25'%3E%3CfeGaussianBlur stdDeviation='5.04' result='b'/%3E%3CfeMerge%3E%3CfeMergeNode in='b'/%3E%3CfeMergeNode in='b'/%3E%3CfeMergeNode in='SourceGraphic'/%3E%3C/feMerge%3E%3C/filter%3E%3C/defs%3E%3Ccircle cx='238.08' cy='238.08' r='210.84' fill='%23090c0b'/%3E%3Ccircle cx='238.08' cy='238.08' r='192.36' fill='none' stroke='url(%23fv-cu)' stroke-width='28.56'/%3E%3Ccircle cx='238.08' cy='238.08' r='178.08' fill='url(%23fv-disc)'/%3E%3Cpath d='M225.48 73.92A164.64 164.64 0 0 0 225.48 402.24Z' fill='%235a3418'/%3E%3Cpath d='M250.68 73.92A164.64 164.64 0 0 1 250.68 402.24Z' fill='%231c3352'/%3E%3Cg fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='21'%3E%3Cpath d='M238.08 289.62L250.68 289.62A57.03 57.03 0 0 0 250.68 175.55' stroke='%235d4fe0'/%3E%3Cpath d='M250.68 175.55L225.48 175.55A80.66 80.66 0 0 0 225.48 336.86' stroke='%23b37fd2'/%3E%3Cpath d='M225.48 336.86L250.68 336.86A98.78 98.78 0 0 0 250.68 139.3' stroke='%23ffa525'/%3E%3Cpath d='M250.68 139.3L225.48 139.3A131.47 131.47 0 0 0 225.48 402.24' stroke='%23ffe7b8'/%3E%3C/g%3E%3Cpath d='M225.48 402.24H478' stroke='%23ffb020' stroke-width='25.93' stroke-linecap='round' stroke-opacity='0.9'/%3E%3Cpath d='M225.48 402.24H478' stroke='%23fff6e3' stroke-width='10.97' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,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">
 <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAMAAAAKE/YAAAABIFBMVEXpzJcIDws4Lx5wV2WYZ5rblCbIoIw7Qks8QJn/x2GYby15YDmzmnQLDw+4gS6Rcl2Wb9VrVaIlJkxrV8+3p4W2gMhHP6fVsnf98NcNEhAbMlFZNBcAAAD+5rcJDQv9pCXmqGxvORayftFdT+CHRxzZlljPh0fpoR6tZzH/9uOXVSW5czh7QRowIxbrsXYlHBEZLknCej3xyoXutk+iXSpKKxSQTSDbnGFrRyyKZ0SQZjknOFFMTEZVS9B2VjbGfkARGyYUJDbMtY0MEQ9GRK50SU/w2KtOOSULEA+WdVGzlnDrmikLEA4MEQ8rN3LgnmEMEQ+lc7WzhVfKii5URTFqWUP/ti+TZJBkPS2DVm/Xo202PIqreUmLURZaUkSri2X9Ij1xAAAAYHRSTlP/Jv//////////////SP///////////////v//AP//////////////////////////////////////////////////kP////9u////UdP//7D////////////////////sQ/CnAAAP1ElEQVR42tWdeVvbSBLGxRlyz87MHkKDiBIgrG0hwmCQbTAEg28TY+wcwJLv/y22dfXdUrXsJFD8FZPAL/W8VV1qVXUbf6Xb3Mt2ozEcmD/JBsNGo/1yLgPKSPtmv2H+Imu8zAfdH5q/1IZ9beiG+QCsoQX9IJADa4Oh2+YDsjYIum8+LBv0s6GH5oOz4Vw69NzAfIA2mEuDnpvuh9uMzRJ7Tg3dnxXv7NH7Kuj2FLzm/LjeGY22Dg8Pb968OTzc3BqN7up+y5sVeVsO/TInsTmujBCowg63Kr47C/C+DHouD7HZqozepNinT8j1m5tblbE3NfecBHqgTzy+e7OThbyJmEMb+VNykxxi5GNGv77VebOTihwx03bnm9NwD3nohqaT64c7Gcgic2BVdwrqBgvd10Ou3OxkMX86lDFPid1noAcayG6giwzmT29UzIFKWnmxBzQ0PEPbZmdnJ9vNUdJQ2NbWXV5v9ylouJvrNxHyjraaKWZkBTMX9oBAt6HI84dqN4+qY5f5627LryiQA/NzUbcxtKYyBOZRfV75r9xWdUuCjKyYSyMJdAPm5tYbGfOI86/U5gsiM7J6DupGBD0HY67siGo+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">
@@ -23,7 +23,6 @@
     <div class="nav-screens">
       <button type="button" class="nav-btn" data-go="lab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M12 10.8a2.4 2.4 0 0 1 2.4 2.4a3.6 3.6 0 0 1-3.6 3.6a4.8 4.8 0 0 1-4.8-4.8a6 6 0 0 1 6-6a7.2 7.2 0 0 1 7.2 7.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>Cyclotron</span></button>
       <button type="button" class="nav-btn" data-go="gauss"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h20M6 8v8M9 8v8M13 8v8M16 8v8M19.5 10.5l2 1.5-2 1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Gauss gun</span></button>
-      <button type="button" class="nav-btn" data-go="collide"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h6M16 12h6M12 6v2M12 16v2M7.8 7.8l1.4 1.4M14.8 14.8l1.4 1.4M16.2 7.8l-1.4 1.4M9.2 14.8l-1.4 1.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg><span>Collider</span></button>
       <button type="button" class="nav-btn" data-go="physics"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h9a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM17 7h2v13M8 9h6M8 12h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Physics</span></button>
     </div>
     <div class="nav-tools">
@@ -48,14 +47,14 @@
       <div class="home-inner">
         <div class="home-top">
           <div class="home-hero">
-            <p class="home-kicker">A cyclotron you can build, break and ride</p>
+            <p class="home-kicker">Two magnetic machines you can build, break and ride</p>
             <h1 class="lockup home-lockup"><span class="lk-row"><span class="lk-project">Project</span><span class="lk-rule" aria-hidden="true"></span><span class="lk-eq" aria-hidden="true"><i>F</i> = <i>q</i>(<i>E</i> + <i>v</i> × <i>B</i>)</span></span><span class="lk-name"><span class="lz-steel">Lorentz</span></span></h1>
             <p class="sr-only">Named after the Lorentz force, F = q(E + v × B): the force on a charge q in an electric field E and a magnetic field B.</p>
             <div class="nameplate"><span class="np-by">Built by</span><span class="np-names"><span class="sig" style="--r:-4deg;--y:1px">Leonel</span><span class="sig" style="--r:2deg;--y:-1px">Michael</span><span class="sig" style="--r:-2deg;--y:2px">Gabriel</span><span class="sig" style="--r:5deg;--y:0px">Marco</span></span></div>
-            <p class="home-lede">Wind an electromagnet, then put it to work: spiral protons up to several million electron volts and ride along with one, fling steel with a coil gun and smash particles head-on. Every number comes with its physics.</p>
+            <p class="home-lede">Two machines, one idea: magnetism can move things. In the <b>cyclotron</b> a magnet bends protons into a spiral while a voltage pushes them faster. In the <b>Gauss gun</b> coils become magnets one after another and fling an iron slug. Build both, and every number comes with its physics.</p>
             <div class="home-cta">
             <button type="button" class="btn-go" data-go="lab">Start the cyclotron</button>
-            <button type="button" class="pbtn btn-ride-home" id="homeRide"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>Ride a proton</button>
+            <button type="button" class="btn-go" data-go="gauss">Fire the Gauss gun</button>
             <button type="button" class="pbtn" id="homeTour">Take the 1-minute tour</button>
             </div>
             <div class="home-meta">
@@ -65,72 +64,45 @@
                 <button type="button" data-value="full" role="radio">Intermediate<small>I know some physics</small></button>
               </div>
             </div>
-              <span class="home-missions">Missions completed <b id="homeMissions">0 / 15</b></span>
+              <span class="home-missions" data-level="expert">Missions completed <b id="homeMissions">0 / 15</b></span>
               <button type="button" class="linkbtn" id="homeIntro">Play the intro</button>
             </div>
           </div>
           <div class="home-stage" id="homeStage">
             <ol class="sr-only">
-              <li>Protons start in the middle.</li>
-              <li>The gap between the two dees gives them a voltage kick every half turn.</li>
-              <li>The magnetic field, pointing into the screen, bends the path into a circle.</li>
-              <li>Each lap is bigger, but takes almost the same time.</li>
-              <li>At the edge the beam leaves for the target.</li>
+              <li>Left, a cyclotron: a magnetic field into the screen bends a proton into circles, the gap between the two dees pushes it at every crossing, and each lap is bigger but takes the same time.</li>
+              <li>Right, a Gauss gun: four coils switch on one after another; each pulls the iron slug towards its middle and switches off there, so the slug flies out faster and faster.</li>
             </ol>
           </div>
         </div>
         <div class="bench">
-          <button type="button" class="mod mod-main" data-go="lab"><span class="tape" style="--r:-3deg">start here</span><canvas class="hicon" data-icon="lab" aria-hidden="true"></canvas><span class="mod-name">Cyclotron</span><span class="mod-desc">Spiral protons up to high energy, then ride along with one. Field chaos, overload and slow-motion replay.</span></button>
-          <button type="button" class="mod" data-go="gauss"><span class="tape tape-new" style="--r:4deg">new!</span><canvas class="hicon" data-icon="gauss" aria-hidden="true"></canvas><span class="mod-name">Gauss gun</span><span class="mod-desc">Coils fire one after another and fling a steel slug.</span></button>
-          <button type="button" class="mod" data-go="collide"><span class="tape" style="--r:3deg">new particles</span><canvas class="hicon" data-icon="collide" aria-hidden="true"></canvas><span class="mod-name">Collider</span><span class="mod-desc">Smash two beams head-on and see what appears.</span></button>
+          <button type="button" class="mod" data-go="lab"><span class="tape" style="--r:-3deg">machine 1</span><canvas class="hicon" data-icon="lab" aria-hidden="true"></canvas><span class="mod-name">Cyclotron</span><span class="mod-desc">A magnet bends protons into a spiral while the gap pushes them faster. Ride along with one.</span></button>
+          <button type="button" class="mod" data-go="gauss"><span class="tape" style="--r:4deg">machine 2</span><canvas class="hicon" data-icon="gauss" aria-hidden="true"></canvas><span class="mod-name">Gauss gun</span><span class="mod-desc">Coils switch on one after another and fling an iron slug. Ride along with it.</span></button>
           <button type="button" class="mod" data-go="physics"><span class="tape" style="--r:5deg">quiz inside</span><canvas class="hicon" data-icon="physics" aria-hidden="true"></canvas><span class="mod-name">Physics and quiz</span><span class="mod-desc">The theory step by step, then test yourself.</span></button>
         </div>
         <section class="uses" aria-labelledby="usesTitle">
           <div class="uses-head">
             <h2 id="usesTitle">What are these machines for?</h2>
-            <p>Not only for physics class. The same pushes and bends are at work in hospitals, trains, aircraft carriers, at CERN and in the sky. Pick one to read the story and try it in the app.</p>
+            <p>Not only for physics class. The same pushes and bends find cancer in hospitals and pull a train to the airport. Pick one to read the story and run it.</p>
           </div>
           <div class="uses-grid" id="usesGrid"></div>
         </section>
-        <section class="scale" aria-labelledby="scaleTitle">
-          <div class="scale-head">
-            <h2 id="scaleTitle">How big is a cyclotron?</h2>
-            <p>From one you could hold in your hand to one 18 metres across. Every machine below is drawn to the same scale, standing on the same floor.</p>
+        <section class="twin" aria-labelledby="twinTitle">
+          <div class="uses-head">
+            <h2 id="twinTitle">Two machines, side by side</h2>
+            <p>Both use magnetism, but in different ways. The numbers are the default settings in this app.</p>
           </div>
-          <div class="scale-strip" tabindex="0" aria-label="Cyclotron sizes, drawn to scale (scrolls sideways on small screens)">
-            <svg class="scale-svg" viewBox="0 0 1200 330" role="img" aria-labelledby="scaleTitle scaleDesc"><desc id="scaleDesc">Cyclotrons drawn to the same scale on one floor line: the first cyclotron of 1931 was 11 cm across; the 11-inch cyclotron of 1932 was 28 cm; the default machine in this app has 80 cm dees; the 60-inch cyclotron of 1939 was 1.5 m; a person is about 1.7 m tall; the 184-inch synchrocyclotron of 1946 was 4.7 m; and TRIUMF in Canada, from 1974, is 18 m across.</desc><path class="sc-triumf" d="M862 292.0A495 495 0 0 1 905.5 0L1200 0L1200 292.0Z"/><path class="sc-triumf-edge" d="M862 292.0A495 495 0 0 1 905.5 0"/><line class="sc-floor" x1="0" y1="292.0" x2="1200" y2="292.0"/><circle class="sc-m sc-1931" cx="64.0" cy="288.9" r="3.1"/><circle class="sc-m sc-1932" cx="138.0" cy="284.3" r="7.7"/><g class="sc-mach sc-ours"><circle class="sc-yoke" cx="228.0" cy="270.0" r="22.0"/><path class="sc-dee" d="M229.3 251.1A18.9 18.9 0 0 1 229.3 288.9Z M226.7 251.1A18.9 18.9 0 0 0 226.7 288.9Z"/></g><g class="sc-mach sc-1939"><circle class="sc-yoke" cx="352.0" cy="250.1" r="41.9"/><path class="sc-dee" d="M354.5 214.1A36.0 36.0 0 0 1 354.5 286.0Z M349.5 214.1A36.0 36.0 0 0 0 349.5 286.0Z"/></g><g class="sc-person"><circle cx="470" cy="205.6" r="6.1"/><path d="M458 216.7q12 -5 24 0l3 38q-4 2 -7 0l-2 -26 -1 66h-8l-1-38 -1 38h-8l-1-66 -2 26q-3 2 -7 0z"/></g><g class="sc-mach sc-1946"><circle class="sc-yoke" cx="672.0" cy="163.5" r="128.5"/><path class="sc-dee" d="M679.7 53.2A110.5 110.5 0 0 1 679.7 273.7Z M664.3 53.2A110.5 110.5 0 0 0 664.3 273.7Z"/></g>
-    <g class="sc-notes">
-      <text x="64" y="232" text-anchor="middle">fits in a hand</text>
-      <path class="sc-arrow" d="M66 240c2 12 1 24 -1 36m-5 -6l5 7 4 -7"/>
-      <text x="138" y="190" text-anchor="middle">first beam</text>
-      <text x="138" y="208" text-anchor="middle">over 1 MeV</text>
-      <path class="sc-arrow" d="M140 216c3 16 2 28 -1 40m-5 -6l5 7 4 -7"/>
-      <text x="228" y="160" text-anchor="middle">ours: about</text>
-      <text x="228" y="178" text-anchor="middle">7.8 MeV protons</text>
-      <path class="sc-arrow" d="M231 186c3 14 2 24 -1 36m-5 -6l5 7 4 -7"/>
-      <text x="352" y="128" text-anchor="middle">16 MeV deuterons,</text>
-      <text x="352" y="146" text-anchor="middle">and a Nobel Prize</text>
-      <text x="470" y="160" text-anchor="middle">a person,</text>
-      <text x="470" y="178" text-anchor="middle">for scale</text>
-      <text x="672" y="20" text-anchor="middle">the first synchrocyclotron:</text>
-      <text x="672" y="38" text-anchor="middle">its frequency drops as the particles speed up</text>
-      <text x="914" y="64">1974, TRIUMF in Canada:</text>
-      <text x="914" y="88">18 m across, 4,400 tonnes, 520 MeV.</text>
-      <text x="914" y="112">It does not fit on this page.</text>
-      <text x="914" y="136">Its particles travel about 45 km</text>
-      <text x="914" y="160">while they spiral out.</text>
-    </g>
-    <g class="sc-years">
-      <text x="64" y="316" text-anchor="middle">1931 · 11 cm</text>
-      <text x="138" y="316" text-anchor="middle">1932 · 28 cm</text>
-      <text x="228" y="316" text-anchor="middle">ours · 80 cm</text>
-      <text x="352" y="316" text-anchor="middle">1939 · 1.5 m</text>
-      <text x="470" y="316" text-anchor="middle">1.7 m</text>
-      <text x="672" y="316" text-anchor="middle">1946 · 4.7 m</text>
-      <text x="912" y="316">1974 · 18 m</text>
-    </g></svg>
-          </div>
-          <p class="scale-src">Dates, sizes and energies: AIP Center for History of Physics, Lawrence Berkeley National Laboratory, TRIUMF. “Ours” is this app’s default teaching cyclotron.</p>
+          <div class="twin-wrap"><table class="twin-table">
+            <thead><tr><th scope="col"><span class="sr-only">Question</span></th><th scope="col"><span class="twin-h twin-c">Cyclotron</span></th><th scope="col"><span class="twin-h twin-g">Gauss gun</span></th></tr></thead>
+            <tbody>
+              <tr><th scope="row">What moves?</th><td>A proton: a tiny particle with a + charge</td><td>An iron slug, a few grams of metal</td></tr>
+              <tr><th scope="row">What makes it faster?</th><td>The electric field in the gap between the two D’s: a push at every crossing</td><td>Each coil: current makes it an electromagnet that pulls the iron in</td></tr>
+              <tr><th scope="row">What does the magnet do?</th><td>Bends the path into a circle. It never speeds the proton up.</td><td>Pulls the slug towards the middle of the coil</td></tr>
+              <tr><th scope="row">The trick</th><td>Every lap takes the same time, so the pushes stay in step: <i>f</i> = <i>qB</i>/2π<i>m</i></td><td>Switch each coil off at its middle, so it never pulls back</td></tr>
+              <tr><th scope="row">How fast here?</th><td>About 13 % of the speed of light (7.8 MeV)</td><td>33 m/s, about 119 km/h (3 J)</td></tr>
+              <tr><th scope="row">In real life</th><td>Hospitals make fluorine-18 for cancer scans (PET)</td><td>Maglev trains are pulled along by coils in the track</td></tr>
+            </tbody>
+          </table></div>
         </section>
         <footer class="home-foot">
           <span>Project Lorentz, a physics project by Leonel, Michael, Gabriel and Marco.</span>
@@ -192,7 +164,7 @@
               <svg class="ic-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
               <svg class="ic-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 5h4v14h-4zM13.5 5h4v14h-4z"/></svg>
             </button>
-            <button class="rbtn rbtn-sm" id="btnStep" type="button" title="Step forward 1/12 revolution (→)" aria-label="Step forward">
+            <button class="rbtn rbtn-sm" id="btnStep" data-level="expert" type="button" title="Step forward 1/12 revolution (→)" aria-label="Step forward">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14l9-7zM16 5h3v14h-3z"/></svg>
             </button>
             <div class="speeds" role="radiogroup" aria-label="Simulation speed">
@@ -201,16 +173,16 @@
               <label><input type="radio" name="speed" value="fast"><span>Fast</span></label>
               <label><input type="radio" name="speed" value="turbo"><span>Turbo</span></label>
             </div>
-            <button class="pbtn" id="btnReplay" type="button" title="Replay the final orbits at one tenth speed" disabled>
+            <button class="pbtn" id="btnReplay" data-level="expert" type="button" title="Replay the final orbits at one tenth speed" disabled>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V1L7 6l5 5V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/></svg>Replay 0.1×
             </button>
-            <button class="pbtn" id="btnRecord" type="button" title="Save this run's settings and results in the notebook">
+            <button class="pbtn" id="btnRecord" data-level="expert" type="button" title="Save this run's settings and results in the notebook">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h10l4 4v14H6zM9 12h8M9 16h8M9 8h4"/></svg>Record
             </button>
-            <button class="pbtn" id="btnSkip" type="button" title="Jump to the end of this run">Skip
+            <button class="pbtn" id="btnSkip" data-level="expert" type="button" title="Jump to the end of this run">Skip
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5v14l7-7zM11 5v14l7-7zM18 5h2v14h-2z"/></svg>
             </button>
-            <div class="scrub">
+            <div class="scrub" data-level="expert">
               <input type="range" id="scrub" min="0" max="1000" step="1" value="0" aria-label="Timeline">
               <div class="scrub-meta"><span id="timeLabel">t = 0 ns</span><span id="slowdown">slowed down</span></div>
             </div>
@@ -219,7 +191,7 @@
 
         <div class="splitter" id="labSplit" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Resize the machine view. Drag left or right, or use the arrow keys. Double-click to reset." title="Drag to make the machine view bigger or smaller · double-click to reset"></div>
         <aside class="controls" id="controls" aria-label="Controls">
-          <div class="preset-box">
+          <div class="preset-box" data-level="expert">
             <label for="labPreset">Load a machine</label>
             <select id="labPreset"></select>
             <p class="preset-note" id="presetNote"></p>
@@ -246,8 +218,8 @@
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a8 8 0 1 1-7.4 5h2.2A6 6 0 1 0 12 6v3L8 5l4-4z"/></svg>
                   <span>Anticlockwise<br><small>B out of screen ⊙</small></span></button>
               </div>
-              <canvas class="sideview" id="sideView" role="img" aria-label="Side view of the electromagnet: iron yoke, coils, poles and the magnetic field in the gap"></canvas>
-              <div class="magnet-out">
+              <canvas class="sideview" id="sideView" data-level="expert" role="img" aria-label="Side view of the electromagnet: iron yoke, coils, poles and the magnetic field in the gap"></canvas>
+              <div class="magnet-out" data-level="expert">
                 <div class="mo-main"><span class="mo-label" id="moLabel">Field in the gap</span><span class="mo-val" id="moVal">1.005 T</span><span class="chip" id="realismChip">Realistic</span></div>
                 <div class="mo-formula" id="moFormula"></div>
               </div>
@@ -274,7 +246,7 @@
             </div>
           </details>
 
-          <details class="acc tag-particle" open id="accPartBox">
+          <details class="acc tag-particle" open id="accPartBox" data-level="expert">
             <summary><span class="acc-title">Particle</span><span class="acc-pill" id="accPart">p⁺</span></summary>
             <div class="acc-body">
               <div class="pgrid" id="particleGrid" role="radiogroup" aria-label="Particle"></div>
@@ -343,7 +315,7 @@
             </div>
           </details>
 
-          <details class="acc tag-mission">
+          <details class="acc tag-mission" data-level="expert">
             <summary><span class="acc-title">Missions</span><span class="acc-pill" id="labMissionCount">0 / 6</span></summary>
             <div class="acc-body"><ol class="missions" id="labMissions"></ol><p class="hint">Missions count with your own settings (not a loaded machine), with chaos mode off.</p></div>
           </details>
@@ -359,21 +331,21 @@
         <section class="info" id="info" aria-label="Measurements">
           <div class="narrate" data-level="beginner" id="labNarrate" aria-live="polite"><div class="narrate-t">What is happening</div><p class="narrate-x" id="labNarrateX"></p></div>
           <div class="tiles">
-            <div class="tile tile-v"><div class="tile-label">Speed <i>v</i></div><div class="tile-val" id="tileV">0</div><div class="tile-sub" id="tileVsub">&nbsp;</div></div>
-            <div class="tile tile-k"><div class="tile-label">Kinetic energy <i>K</i></div><div class="tile-val" id="tileK">0</div><div class="tile-sub" id="tileKsub">&nbsp;</div></div>
-            <div class="tile tile-r"><div class="tile-label">Orbit radius <i>r</i></div><div class="tile-val" id="tileR">0</div><div class="tile-sub" id="tileRsub">&nbsp;</div></div>
-            <div class="tile tile-n"><div class="tile-label">Revolutions</div><div class="tile-val" id="tileN">0</div><div class="tile-sub" id="tileNsub">&nbsp;</div></div>
+            <div class="tile tile-v"><div class="tile-label"><span data-level="expert">Speed <i>v</i></span><span data-level="beginner">Speed</span></div><div class="tile-val" id="tileV">0</div><div class="tile-sub" id="tileVsub">&nbsp;</div></div>
+            <div class="tile tile-k"><div class="tile-label"><span data-level="expert">Kinetic energy <i>K</i></span><span data-level="beginner">Energy</span></div><div class="tile-val" id="tileK">0</div><div class="tile-sub" id="tileKsub">&nbsp;</div></div>
+            <div class="tile tile-r"><div class="tile-label"><span data-level="expert">Orbit radius <i>r</i></span><span data-level="beginner">Size of the circle</span></div><div class="tile-val" id="tileR">0</div><div class="tile-sub" id="tileRsub">&nbsp;</div></div>
+            <div class="tile tile-n"><div class="tile-label"><span data-level="expert">Revolutions</span><span data-level="beginner">Laps</span></div><div class="tile-val" id="tileN">0</div><div class="tile-sub" id="tileNsub">&nbsp;</div></div>
           </div>
           <div class="card graphs">
-            <div class="graph"><div class="graph-head"><select id="selA" aria-label="Quantity for the first graph"></select></div><canvas id="graphA" role="img" aria-label="Graph A"></canvas></div>
+            <div class="graph"><div class="graph-head"><select id="selA" data-level="expert" aria-label="Quantity for the first graph"></select></div><canvas id="graphA" role="img" aria-label="Graph A"></canvas></div>
             <div class="graph" data-level="expert"><div class="graph-head"><select id="selB" aria-label="Quantity for the second graph"></select></div><canvas id="graphB" role="img" aria-label="Graph B"></canvas></div>
             <div class="graph-foot">
-              <button class="pbtn pbtn-ghost" id="btnPin" type="button" title="Keep this run on the graphs and the screen so you can compare it with the next one">Keep this run for comparison</button>
+              <button class="pbtn pbtn-ghost" id="btnPin" data-level="expert" type="button" title="Keep this run on the graphs and the screen so you can compare it with the next one">Keep this run for comparison</button>
               <button class="pbtn pbtn-ghost" id="btnUnpin" type="button" hidden>Clear comparison</button>
               <span class="ghost-label" id="ghostLabel"></span>
             </div>
           </div>
-          <div class="card data">
+          <div class="card data" data-level="expert">
             <div class="data-head">
               <div class="tabs" role="tablist" aria-label="Data">
                 <button type="button" role="tab" data-tab="now">Particle now</button>
@@ -428,14 +400,14 @@
           <div class="gg-readouts tiles">
             <div class="tile tile-v"><div class="tile-label">Exit speed</div><div class="tile-val" id="ggTv">—</div><div class="tile-sub" id="ggTvS">&nbsp;</div></div>
             <div class="tile tile-k"><div class="tile-label">Kinetic energy</div><div class="tile-val" id="ggTk">—</div><div class="tile-sub" id="ggTkS">&nbsp;</div></div>
-            <div class="tile tile-r"><div class="tile-label" id="ggTeL">Efficiency</div><div class="tile-val" id="ggTe">—</div><div class="tile-sub" id="ggTeS">&nbsp;</div></div>
-            <div class="tile tile-n"><div class="tile-label" id="ggTfL">Strongest pull</div><div class="tile-val" id="ggTf">—</div><div class="tile-sub" id="ggTfS">&nbsp;</div></div>
+            <div class="tile tile-r" data-level="expert"><div class="tile-label" id="ggTeL">Efficiency</div><div class="tile-val" id="ggTe">—</div><div class="tile-sub" id="ggTeS">&nbsp;</div></div>
+            <div class="tile tile-n" data-level="expert"><div class="tile-label" id="ggTfL">Strongest pull</div><div class="tile-val" id="ggTf">—</div><div class="tile-sub" id="ggTfS">&nbsp;</div></div>
           </div>
           <div class="card gg-graphs">
-            <div class="gg-graph"><div class="graph-head"><select id="ggSelA" aria-label="Quantity for the first graph"></select></div><canvas id="ggGraphA" role="img" aria-label="Graph A"></canvas></div>
+            <div class="gg-graph"><div class="graph-head"><select id="ggSelA" data-level="expert" aria-label="Quantity for the first graph"></select></div><canvas id="ggGraphA" role="img" aria-label="Graph A"></canvas></div>
             <div class="gg-graph" data-level="expert"><div class="graph-head"><select id="ggSelB" aria-label="Quantity for the second graph"></select></div><canvas id="ggGraphB" role="img" aria-label="Graph B"></canvas></div>
           </div>
-          <div class="card data" id="ggData">
+          <div class="card data" id="ggData" data-level="expert">
             <div class="data-head">
               <div class="tabs" role="tablist" aria-label="Gauss gun data">
                 <button type="button" role="tab" data-tab="shot">This shot</button>
@@ -448,7 +420,7 @@
           </div>
         </div>
         <aside class="side" aria-label="Gauss gun settings">
-          <div class="panel">
+          <div class="panel" data-level="expert">
             <div class="panel-title">Which Gauss gun?</div>
             <div class="seg" id="ggType" role="radiogroup" aria-label="Type of Gauss gun">
               <button type="button" data-value="coil" role="radio">Coil gun<small>electromagnets</small></button>
@@ -469,7 +441,7 @@
                 <label class="switch" data-level="expert"><input type="checkbox" id="ggReal"><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Current takes time to build up<small>real coils: I = I₀(1 − e<sup>−t/τ</sup>), τ = L/R</small></span></label>
               </div>
             </details>
-            <details class="acc tag-particle" open>
+            <details class="acc tag-particle" open data-level="expert">
               <summary><span class="acc-title">Projectile</span></summary>
               <div class="acc-body">
                 <div class="pgrid" id="ggMat" role="radiogroup" aria-label="Projectile material"></div>
@@ -512,60 +484,7 @@
               <button type="button" data-value="sand" role="radio">Sand box<small>just stop it</small></button>
             </div>
           </div>
-          <details class="acc tag-mission"><summary><span class="acc-title">Gauss gun missions</span><span class="acc-pill" id="ggMissionCount">0 / 6</span></summary><div class="acc-body"><ol class="missions" id="ggMissions"></ol></div></details>
-        </aside>
-      </div>
-    </section>
-
-    <!-- ============================== COLLIDER ============================== -->
-    <section class="screen screen-collide" id="screen-collide" aria-label="Particle collider" hidden>
-      <div class="arena-layout">
-        <div class="arena-main">
-          <div class="arena-wrap arena-square" id="collWrap">
-            <canvas id="collCanvas" role="img" aria-label="Detector seen from above with the two beams and the particles created in the collision"></canvas>
-            <div class="frame-corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-            <div class="hud hud-status" id="collStatus">Load the beams and press Collide</div>
-            <div class="letterbox" id="collLetterbox" aria-hidden="true"><div class="lb-top"><span>Replay</span><b id="collLbSpeed">0.1×</b><span>slow motion</span></div><div class="lb-bot"><span id="collLbInfo"></span></div></div>
-            <button type="button" class="grip grip-y" id="collGrip" aria-label="Resize the detector view. Drag up or down, or use the arrow keys. Double-click to reset." title="Drag to change the detector height · double-click to reset"></button>
-            <div class="size-badge" hidden></div>
-            <div class="toast" id="collToast" hidden><div class="toast-text"></div><button class="toast-close" type="button" aria-label="Close message">×</button></div>
-          </div>
-          <div class="arena-bar">
-            <button type="button" class="btn-go btn-go-hot" id="collGo">Collide!</button>
-            <button type="button" class="pbtn" id="collReplay" disabled>Slow-motion replay</button>
-            <label class="switch switch-sm"><input type="checkbox" id="collAuto" checked><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Auto replay</span></label>
-            <label class="switch switch-sm"><input type="checkbox" id="collLabels" checked><span class="switch-track" aria-hidden="true"></span><span class="switch-text">Track labels</span></label>
-            <button type="button" class="pbtn" id="collSurprise" title="Pick a random pair of beams and energies, then collide">Surprise me</button>
-          </div>
-          <div class="narrate" data-level="beginner" aria-live="polite"><div class="narrate-t">What is happening</div><p class="narrate-x" id="collNarrateX"></p></div>
-          <div class="coll-cards">
-            <div class="card ccard"><div class="ccard-title">Before the collision</div><div id="collBefore"></div></div>
-            <div class="card ccard"><div class="ccard-title">Collision energy</div><div id="collEnergy"></div></div>
-            <div class="card ccard ccard-wide"><div class="ccard-title">What came out</div><div id="collOut"><p class="hint">Press Collide.</p></div></div>
-          </div>
-        </div>
-        <aside class="side" aria-label="Collider settings">
-          <div class="panel">
-            <div class="panel-title">Quick experiments</div>
-            <div class="chips" id="collPresets"></div>
-          </div>
-          <div class="panel beam-a">
-            <div class="panel-title"><span class="beam-dot"></span>Beam A <small>from the left</small></div>
-            <div class="pgrid pgrid-6" id="collA"></div>
-            <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-collKa">Kinetic energy</label><div class="ctl-num"><input id="n-collKa" type="number" inputmode="decimal" aria-label="Kinetic energy of beam A in MeV"><span class="ctl-unit">MeV</span></div></div><input id="r-collKa" type="range"></div>
-          </div>
-          <div class="panel beam-b">
-            <div class="panel-title"><span class="beam-dot"></span>Beam B <small>from the right</small></div>
-            <div class="pgrid pgrid-6" id="collB"></div>
-            <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-collKb">Kinetic energy</label><div class="ctl-num"><input id="n-collKb" type="number" inputmode="decimal" aria-label="Kinetic energy of beam B in MeV"><span class="ctl-unit">MeV</span></div></div><input id="r-collKb" type="range"></div>
-          </div>
-          <div class="panel">
-            <div class="panel-title">Detector magnet</div>
-            <div class="ctl"><div class="ctl-row"><label class="ctl-label" for="r-collB">Field <i>B</i></label><div class="ctl-num"><input id="n-collB" type="number" inputmode="decimal" aria-label="Detector field in tesla"><span class="ctl-unit">T</span></div></div><input id="r-collB" type="range"></div>
-            <p class="hint">Charged particles curl in the detector's field (r = p/|q|B), so their curvature reveals their momentum and charge sign, just like real collider detectors.</p>
-            <button type="button" class="pbtn pbtn-ghost" id="collFromLab">Use the cyclotron's beam energy</button>
-          </div>
-          <details class="acc tag-mission"><summary><span class="acc-title">Collider missions</span><span class="acc-pill" id="collMissionCount">0 / 3</span></summary><div class="acc-body"><ol class="missions" id="collMissions"></ol></div></details>
+          <details class="acc tag-mission" data-level="expert"><summary><span class="acc-title">Gauss gun missions</span><span class="acc-pill" id="ggMissionCount">0 / 6</span></summary><div class="acc-body"><ol class="missions" id="ggMissions"></ol></div></details>
         </aside>
       </div>
     </section>
@@ -585,7 +504,6 @@
           <button type="button" data-goto="maximum">6 · Maximum energy</button>
           <button type="button" data-goto="relativity">7 · The relativistic limit</button>
           <button type="button" data-goto="example">Worked example (your settings)</button>
-          <button type="button" data-goto="collide-physics">Collisions and new particles</button>
           <button type="button" data-goto="gauss-physics">The Gauss gun</button>
           <button type="button" data-goto="safety">Can an accelerator explode?</button>
           <button type="button" data-goto="real-world">Real cyclotrons</button>
@@ -610,12 +528,12 @@
               <li><b>Set up the accelerator.</b> Choose the dee radius <i>R</i> and the dee voltage <i>V</i>. Keep <em>Fixed frequency</em> for a classic cyclotron, or let the frequency follow the particle (a synchrocyclotron).</li>
               <li><b>Pick a particle</b> and press play. Use the speed buttons, drag the timeline, or press <em>Skip to end</em>. After a run, <em>Replay 0.1×</em> shows the last orbits in slow motion with every push labelled.</li>
               <li><b>Make it bigger.</b> Drag the edge of the copper dees (or the amber knob on it) to change the size of the machine itself: the dee radius <i>R</i>. Drag the striped corner of the view to make the picture bigger or smaller; double-click it to go back to automatic size. Scroll the mouse wheel or pinch to zoom in on any spot, and drag to move around.</li>
-              <li><b>Full screen and riding.</b> The key with four corners (under <em>3D</em>) fills the whole screen with that view; its buttons come along in a bar at the bottom, and <kbd>Esc</kbd> brings you back. Every screen can also be ridden: <em>Ride the slug</em> on the Gauss gun and <em>Ride the proton</em> on the Collider (you fly in with beam A, then out with the fastest new particle). Drag to look around while riding.</li>
-              <li><b>See it in 3D.</b> Every screen has a <em>3D</em> key at the top right of its view. Drag to turn the scene, use + and − (or click the view, then scroll) to zoom, and double-click to reset. On the Cyclotron screen the 3D view shows the whole electromagnet: the iron yoke, as many copper coils as you choose, the pole gap and the dees, with the top pole lifted off so you can see the spiral inside. The Collider becomes a cut-away detector, and the Gauss gun a workbench you can walk around.</li>
+              <li><b>Full screen and riding.</b> The key with four corners (under <em>3D</em>) fills the whole screen with that view; its buttons come along in a bar at the bottom, and <kbd>Esc</kbd> brings you back. The Gauss gun can be ridden too: <em>Ride the slug</em>. Drag to look around while riding.</li>
+              <li><b>See it in 3D.</b> Every screen has a <em>3D</em> key at the top right of its view. Drag to turn the scene, use + and − (or click the view, then scroll) to zoom, and double-click to reset. On the Cyclotron screen the 3D view shows the whole electromagnet: the iron yoke, as many copper coils as you choose, the pole gap and the dees, with the top pole lifted off so you can see the spiral inside. The Gauss gun becomes a workbench you can walk around.</li>
               <li><b>Ride along.</b> Press <em>Ride the proton</em> (or <kbd>V</kbd>) to see the machine from just behind the particle. You hear a thump every time it crosses the gap and gets a push, and a tick at every peak of the voltage. While the two stay in step, the beat is steady: that is the cyclotron resonance. The particle's own clock is shown next to the lab clock; it runs slow by the factor γ, as relativity predicts.</li>
               <li><b>Read the numbers.</b> The tiles show the essentials; the tabs explain every quantity. Turn on <em>Show working</em> to see each formula with your numbers in it. <em>Record</em> saves a run to the Notebook so you can copy a results table.</li>
               <li><b>Experiment.</b> <em>Magnetic field chaos</em> lets you flip, scale or shake the field while the particle flies. <em>Overload mode</em> lets you push the machine past its limits.</li>
-              <li><b>Explore the other screens:</b> fire a Gauss gun and collide particles head-on. Each screen has its own missions, and its <em>Real life, simulated</em> panel runs a real machine that uses the same physics.</li>
+              <li><b>Explore the other screens:</b> fire a Gauss gun, then read the physics and take the quiz. Each screen has its own missions, and its <em>Real life, simulated</em> panel runs a real machine that uses the same physics.</li>
               <li><b>Beginner or Intermediate.</b> The keys at the top right change how much you see. <em>Beginner</em> keeps only the main controls (coils, turns, current, particle, dee size and voltage on the cyclotron; coils, turns, current and projectile on the Gauss gun), adds a plain-language "What is happening" note on every screen and puts ? buttons next to the controls. The real-life simulations then show their key numbers in plain words. <em>Intermediate</em> adds the extra controls (pole gap, RF mode, relativity, experiments, display tools, the second graph) and every step of the working. Missions marked <em>Intermediate</em> need one of those extra controls.</li>
               <li>Keyboard: <kbd>Space</kbd> play/pause, <kbd>→</kbd> step, <kbd>V</kbd> ride along. The buttons at the bottom right switch sound, colour scheme and full screen.</li>
             </ol>
@@ -734,19 +652,6 @@
             <div class="worked" id="worked"></div>
           </section>
 
-          <section id="collide-physics" class="doc-sec">
-            <h2>Collisions: energy, barriers and new particles</h2>
-            <p><b>Collision energy.</b> What matters is the energy in the centre-of-mass frame, the invariant mass</p>
-            <div class="eq"><span class="eq-main"><i>E</i><sub>cm</sub> = √[(<i>E</i>₁ + <i>E</i>₂)² − (<i>p</i>₁<i>c</i> − <i>p</i>₂<i>c</i>)²]</span>
-              <span class="eq-key"><i>E</i> = <i>K</i> + <i>mc</i>² is each particle's total energy. The energy available to make new particles is <i>Q</i> = <i>E</i><sub>cm</sub> − <i>m</i>₁<i>c</i>² − <i>m</i>₂<i>c</i>².</span></div>
-            <ul>
-              <li><b>Colliders beat fixed targets.</b> Two 150 MeV protons meeting head-on give <i>Q</i> = 300 MeV. To get the same from a proton hitting a proton at rest, the beam would need about 650 MeV. The Collider screen shows this "fixed-target equivalent" for every shot.</li>
-              <li><b>The Coulomb barrier.</b> Two positive nuclei repel. Head-on, they get no closer than <i>r</i><sub>min</sub> = <i>k z</i>₁<i>z</i>₂<i>e</i>²/<i>Q</i> (with <i>ke</i>² = 1.44 MeV·fm). Unless <i>Q</i> is above about 1.44 <i>z</i>₁<i>z</i>₂ / (<i>R</i>₁ + <i>R</i>₂) MeV, with nuclear radii <i>R</i> ≈ 1.2 <i>A</i><sup>1/3</sup> fm, they bounce off without touching.</li>
-              <li><b>New particles need energy</b> (<i>E</i> = <i>mc</i>²): a neutral pion needs 135 MeV, a π⁺π⁻ pair 279 MeV, and a proton–antiproton pair 1877 MeV.</li>
-              <li><b>Annihilation.</b> An electron and a positron destroy each other and turn into gamma rays, each about 511 keV at low energy. This is the real "explosion" of matter into light, and the basis of PET scanners.</li>
-              <li>The lab's events conserve energy, momentum and charge exactly; which particles appear, and their directions, are chosen at random within those rules, as in real collisions.</li>
-            </ul>
-          </section>
 
           <section id="gauss-physics" class="doc-sec">
             <h2>The Gauss gun: throwing things with magnetism</h2>
@@ -846,7 +751,7 @@
               <li><i>B</i> = μ₀<i>NI</i>/<i>g</i> treats the iron as perfect and ignores saturation above about 2 T.</li>
               <li>The gap is treated as thin: the particle gains its energy at the centre line of the gap.</li>
               <li>The particle starts at rest at the ion source, placed so the ideal beam's outer orbits end up centred.</li>
-              <li>Motion is 2-D, in a perfect vacuum, for one particle. Collisions are drawn in 2-D (real events are 3-D).</li>
+              <li>Motion is 2-D, in a perfect vacuum, for one particle.</li>
               <li>Constants: CODATA 2018; particle masses from the Particle Data Group.</li>
             </ul>
           </section>
@@ -865,8 +770,7 @@
                   <tr><td>Maximum kinetic energy</td><td><i>K</i><sub>max</sub> = <i>q</i>²<i>B</i>²<i>R</i>²/(2<i>m</i>)</td><td>Independent of <i>V</i>.</td></tr>
                   <tr><td>Revolutions / time</td><td><i>N</i> = <i>K</i>/(2|<i>q</i>|<i>V</i>), <i>t</i> = π<i>BR</i>²/(2<i>V</i>)</td><td>Bigger <i>V</i> → fewer turns.</td></tr>
                   <tr><td>Lorentz factor</td><td>γ = 1/√(1 − <i>v</i>²/<i>c</i>²) = 1 + <i>K</i>/(<i>mc</i>²)</td><td>γ ≈ 1: classical physics is fine.</td></tr>
-                  <tr><td>Ring of fixed size (LHC)</td><td><i>B</i> = <i>p</i>/(|<i>q</i>|ρ)</td><td>The ring cannot grow, so B must grow with p.</td></tr>
-                  <tr><td>Collision energy</td><td><i>E</i><sub>cm</sub>² = (<i>E</i>₁+<i>E</i>₂)² − (<i>p</i>₁<i>c</i>−<i>p</i>₂<i>c</i>)²</td><td>Energy available for new particles.</td></tr>
+                  <tr><td>Ring of fixed size (synchrotron)</td><td><i>B</i> = <i>p</i>/(|<i>q</i>|ρ)</td><td>The ring cannot grow, so B must grow with p.</td></tr>
                   <tr><td>Beam power</td><td><i>P</i> = <i>I</i> × <i>K</i>/<i>e</i></td><td>10 μA of 10 MeV protons deliver 100 W.</td></tr>
                   <tr><td>Field inside a long coil</td><td><i>B</i> ≈ μ₀<i>NI</i>/ℓ</td><td>Coil gun: more turns or current, stronger pull.</td></tr>
                   <tr><td>Pull on a magnetised slug</td><td><i>F</i> = μ₀<i>MA</i>[<i>H</i><sub>front</sub> − <i>H</i><sub>back</sub>]</td><td>Forwards before the coil's middle, backwards after it.</td></tr>
@@ -915,17 +819,10 @@
 
   <div class="intro" id="intro" role="dialog" aria-modal="true" aria-label="Project Lorentz title" tabindex="-1" hidden>
     <canvas class="intro-cv" id="introCv" aria-hidden="true"></canvas>
-    <div class="intro-story" id="introStory" aria-hidden="true">
-      <div class="cap" data-n="1"><p class="cap-main"><span class="cap-n">1</span>This is a proton.</p><p class="cap-sub">A tiny particle with a + charge, flying in a straight line.</p></div>
-      <div class="cap" data-n="2"><p class="cap-main"><span class="cap-n">2</span>Switch on the magnet: the path bends into a circle.</p><p class="cap-sub">The magnet’s force always points to the centre.</p></div>
-      <div class="cap" data-n="3"><p class="cap-main"><span class="cap-n">3</span>Each time it crosses the gap, it gets a push.</p><p class="cap-sub">Faster means a bigger circle.</p></div>
-      <div class="cap" data-n="4"><p class="cap-main"><span class="cap-n">4</span>Every lap still takes the same time.</p><p class="cap-sub">Bigger circle, but faster too, so the pushes can keep a steady beat.</p></div>
-      <div class="cap" data-n="5"><p class="cap-main"><span class="cap-n">5</span>At the edge, it shoots out.</p><p class="cap-sub">That is a cyclotron.</p></div>
-    </div>
     <div class="intro-stack" id="introStack">
-      <p class="intro-kicker">A cyclotron you can build, break and ride</p>
+      <p class="intro-kicker">Two magnetic machines you can build, break and ride</p>
       <div class="lockup intro-lockup" role="heading" aria-level="2"><span class="lk-row"><span class="lk-project">Project</span><span class="lk-rule" aria-hidden="true"></span><span class="lk-eq" aria-hidden="true"><i>F</i> = <i>q</i>(<i>E</i> + <i>v</i> × <i>B</i>)</span></span><span class="lk-name" id="introName"><span class="lz-steel">Lorentz</span><span class="lz-burn" id="introBurn" aria-hidden="true">Lorentz</span></span></div>
-      <p class="intro-key"><b>E</b> pushes it in the gap. <b>B</b> bends it into a circle.</p>
+      <p class="intro-key">Cyclotron: <b>E</b> pushes, <b>B</b> bends. Gauss gun: <b>coils</b> pull iron.</p>
       <div class="nameplate"><span class="np-by">Built by</span><span class="np-names"><span class="sig" style="--r:-4deg;--y:1px;--i:0">Leonel</span><span class="sig" style="--r:2deg;--y:-1px;--i:1">Michael</span><span class="sig" style="--r:-2deg;--y:2px;--i:2">Gabriel</span><span class="sig" style="--r:5deg;--y:0px;--i:3">Marco</span></span></div>
     </div>
     <p class="intro-start" id="introStart"><span class="is-key">Press any key or click to start</span><span class="is-touch">Tap to start</span></p>
@@ -956,9 +853,9 @@
 <script src="view3d.js"></script>
 <script src="lab.js"></script>
 <script src="gauss.js"></script>
-<script src="collide.js"></script>
 <script src="physics-page.js"></script>
 <script src="guide.js"></script>
+<script src="explain.js"></script>
 <script src="intro.js"></script>
 <script src="reallife.js"></script>
 <script src="realsim-physics.js"></script>

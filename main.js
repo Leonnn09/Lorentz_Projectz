@@ -5,7 +5,7 @@
 (() => {
   'use strict';
   const { $, $$, clamp, TAU, store, skin, audio, missions, fitCanvas, reduceMotion, hexA } = CL;
-  const NAMES = ['home', 'lab', 'gauss', 'collide', 'physics'];
+  const NAMES = ['home', 'lab', 'gauss', 'physics'];
   let current = null;
 
   /* ---------- screens ---------- */
@@ -39,52 +39,103 @@
     for (const ic of home.icons) { const r = ic.cv.getBoundingClientRect(); ic.w = r.width; ic.h = r.height; }
   }
   const HALF = 16, HALF_T = 0.42, EXIT_T = 1.4;          // half-turns per run, seconds per half-turn, extraction time
+  // Two machines, side by side and the same size: the cyclotron on the left half of the stage, the Gauss gun on the right.
+  // On narrow screens both are drawn faintly behind the title.
   function heroGeom() {
-    const W = home.W, H = home.H, st = home.stage, wide = W >= 980 && st && st.w > 280 && st.h > 240;
-    if (!wide) { const R0 = Math.min(W * 0.4, H * 0.28); return { W, H, wide, R0, cx: W * 0.62, cy: H * 0.3, bottom: H }; }
-    // the machine sits on the left of the stage; the handwritten notes get a column on its right,
-    // which may run past the stage into the free margin at the screen edge
-    const nw = clamp(st.w * 0.36, 190, 250), spare = Math.max(0, W - (st.x + st.w) - 14);
-    const mw = st.w - Math.max(0, nw - spare);
-    const R0 = Math.max(80, Math.min(mw / 2.9, st.h / 2.84));
-    const cx = st.x + Math.min(mw / 2, R0 * 1.45 + 4), cy = st.y + st.h / 2;
-    return { W, H, wide, R0, cx, cy, bottom: st.y + st.h, nx: cx + R0 * 1.36 + 30, nw: Math.min(nw, W - 12 - (cx + R0 * 1.36 + 30)) };
+    const W = home.W, H = home.H, st = home.stage, wide = W >= 980 && st && st.w > 420 && st.h > 240;
+    if (!wide) {
+      const R0 = Math.min(W * 0.24, H * 0.15);
+      const cy = H * 0.19;
+      return { W, H, wide, R0, cx: W * 0.74, cy, bottom: H, gun: { x0: W * 0.12, x1: W * 0.97, y: cy + R0 * 1.85, th: 16 } };
+    }
+    const half = st.w / 2, capH = 70;
+    const R0 = Math.max(60, Math.min((half - 24) / 2.85, (st.h - capH) / 2.84));
+    const cx = st.x + half / 2, cy = st.y + (st.h - capH) / 2;
+    return { W, H, wide, R0, cx, cy, half, bottom: st.y + st.h, capY: cy + R0 * 1.42 + 26,
+      gun: { x0: st.x + half + 22, x1: st.x + st.w - 6, y: cy, th: clamp(R0 * 0.24, 16, 30) } };
   }
-  /* the team's notes on the machine: handwriting with an ink arrow to the part it explains */
-  const NOTES = [
-    { lines: ['the gap: a voltage kick', 'every half turn'], y: -1.02, at: g => [g.cx + g.R0 * 0.012, g.cy - g.R0 * 0.9] },
-    { lines: ['B points into the screen:', 'it bends the path into a circle'], y: -0.4, at: g => [g.cx + g.R0 * 0.56, g.cy - g.R0 * 0.5] },
-    { lines: ['each lap is bigger, yet takes', 'almost the same time', 'f = qB / 2πm'], y: 0.3, at: g => [g.cx + g.R0 * 0.9, g.cy + g.R0 * 0.2] },
-    { lines: ['copper coils:', 'the electromagnet'], y: 1.02, at: g => [g.cx + g.R0 * 1.17 * Math.cos(0.72), g.cy + g.R0 * 1.17 * Math.sin(0.72)] },
+  /* the team's handwriting under each machine */
+  const CAPS = [
+    ['the cyclotron', 'B bends the proton, the gap pushes it'],
+    ['the Gauss gun', 'each coil pulls the slug, then switches off'],
   ];
   function drawNotes(ctx, g) {
-    if (!g.wide || !g.nw || g.nw < 150) return;
-    const ink = skin.c('--note-ink'), t = home.noteT, fs = clamp(g.R0 * 0.095, 14.5, 17), lh = fs * 1.18;
-    ctx.save();
-    ctx.font = `400 ${fs}px Kalam, "Segoe Print", "Comic Sans MS", cursive`; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    NOTES.forEach((n, i) => {
-      const p = reduceMotion ? 1 : clamp((t - 0.5 - i * 0.55) / 0.9, 0, 1);
-      if (p <= 0) return;
-      const tx = g.nx, ty = g.cy + n.y * g.R0 - (n.lines.length - 1) * lh / 2;
-      const [ax, ay] = n.at(g);
-      // ink arrow: a gentle curve from the note to the part, then a two-stroke arrow head
-      const sx = tx - 8, sy = ty - fs * 0.32, mx = (sx + ax) / 2, my = (sy + ay) / 2 - 18 + i * 6;
-      const len = Math.hypot(ax - sx, ay - sy) * 1.12, ap = clamp(p * 1.4, 0, 1);
-      ctx.strokeStyle = hexA(ink, 0.82); ctx.lineWidth = 1.5;
-      ctx.setLineDash([len * ap, len]); ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(mx, my, ax, ay); ctx.stroke(); ctx.setLineDash([]);
-      if (ap >= 1) {
-        const ang = Math.atan2(ay - my, ax - mx), hl = 9;
-        ctx.beginPath(); ctx.moveTo(ax - Math.cos(ang - 0.42) * hl, ay - Math.sin(ang - 0.42) * hl); ctx.lineTo(ax, ay); ctx.lineTo(ax - Math.cos(ang + 0.38) * hl * 0.9, ay - Math.sin(ang + 0.38) * hl * 0.9); ctx.stroke();
-        ctx.fillStyle = hexA(ink, 0.9); ctx.beginPath(); ctx.arc(ax, ay, 2.2, 0, TAU); ctx.fill();
-      }
-      // the words appear as if written, left to right
-      const wmax = Math.max(...n.lines.map(l => ctx.measureText(l).width));
-      ctx.save(); ctx.beginPath(); ctx.rect(tx - 4, ty - fs * 1.2, (wmax + 12) * clamp((p - 0.25) / 0.75, 0, 1), lh * n.lines.length + fs * 0.8); ctx.clip();
+    if (!g.wide) return;
+    const ink = skin.c('--note-ink'), t = home.noteT, fs = clamp(g.R0 * 0.12, 15, 19);
+    ctx.save(); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'center';
+    CAPS.forEach((cap, i) => {
+      const p = reduceMotion ? 1 : clamp((t - 0.4 - i * 0.5) / 0.9, 0, 1); if (p <= 0) return;
+      const x = i === 0 ? g.cx : g.cx + g.half;
+      ctx.save(); ctx.beginPath(); ctx.rect(x - g.half / 2, g.capY - fs * 1.4, g.half * p, fs * 3.2); ctx.clip();
       ctx.fillStyle = ink; ctx.shadowColor = skin.c('--note-halo'); ctx.shadowBlur = 4;
-      n.lines.forEach((l, k) => ctx.fillText(l, tx + (k === 2 ? 6 : 0), ty + k * lh));
+      ctx.font = `700 ${fs * 1.12}px Kalam, "Segoe Print", "Comic Sans MS", cursive`; ctx.fillText(cap[0], x, g.capY);
+      ctx.font = `400 ${fs}px Kalam, "Segoe Print", "Comic Sans MS", cursive`; ctx.fillText(cap[1], x, g.capY + fs * 1.35);
       ctx.restore();
     });
+    ctx.restore();
+  }
+  // the Gauss gun: four coils switch on one after another; each pulls the iron slug to its middle and switches off there,
+  // so every coil adds the same energy (the speed after coil n grows as √n). Then the slug flies out and knocks a can over.
+  function drawGun(ctx, g, dt, alpha) {
+    const G = g.gun, L = (G.x1 - G.x0) * 0.74, x0 = G.x0, y = G.y, th = G.th, P = 3.6, u = home.t % P;
+    const coils = [0.27, 0.44, 0.61, 0.78].map(f => x0 + L * f), cw = Math.max(16, L * 0.085), ch = th * 1.15, sl = Math.max(20, L * 0.08);
+    const start = x0 + sl / 2 + 6, T1 = 0.7, v1 = (coils[0] - start) * 2.2;
+    // where the slug is: idle, then pulled through the coils, then out
+    let x = start, on = -1;
+    if (u >= T1) {
+      let tt = u - T1, prev = start, va = 0, done = false;
+      for (let k = 0; k < 4; k++) {
+        const vb = v1 * Math.sqrt(k + 1), d = coils[k] - prev, T = 2 * d / (va + vb), a = (vb - va) / T;
+        if (tt < T) { x = prev + va * tt + 0.5 * a * tt * tt; on = k; done = true; break; }
+        tt -= T; prev = coils[k]; va = vb;
+      }
+      if (!done) x = coils[3] + va * tt;
+    }
+    ctx.save(); ctx.globalAlpha = alpha;
+    // the bench it is clamped to, and the capacitor bank that powers the coils
+    const by = y + th / 2 + ch + 10;
+    ctx.fillStyle = 'rgba(60,46,32,0.9)'; ctx.fillRect(x0 - 16, by, G.x1 - x0 + 16, 10); ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(x0 - 16, by, G.x1 - x0 + 16, 2);
+    for (let k = 0; k < 2; k++) {
+      const bx = x0 + L * 0.03 + k * th * 1.15, bh = ch + 4, cg2 = ctx.createLinearGradient(bx, 0, bx + th, 0);
+      cg2.addColorStop(0, '#203a5a'); cg2.addColorStop(0.5, '#4f7fb3'); cg2.addColorStop(1, '#1b3150');
+      ctx.fillStyle = cg2; ctx.fillRect(bx, by - bh, th, bh); ctx.fillStyle = '#c9d1d6'; ctx.fillRect(bx, by - bh - 3, th, 3);
+    }
+    // barrel
+    ctx.fillStyle = 'rgba(200,220,230,0.07)'; ctx.strokeStyle = 'rgba(200,220,230,0.35)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x0, y - th / 2, L, th, 4); else ctx.rect(x0, y - th / 2, L, th); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#2b3337'; ctx.fillRect(x0 - 8, y - th * 0.8, 8, th * 1.6);
+    coils.forEach((cx, k) => {
+      const lit = k === on;
+      if (lit) {
+        const gl = ctx.createRadialGradient(cx, y, 0, cx, y, cw * 1.9); gl.addColorStop(0, 'rgba(255,170,70,0.5)'); gl.addColorStop(1, 'rgba(255,120,40,0)');
+        ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(cx, y, cw * 1.9, 0, TAU); ctx.fill();
+        ctx.strokeStyle = 'rgba(179,166,255,0.4)'; ctx.lineWidth = 1;
+        for (let r = 1; r <= 2; r++) { ctx.beginPath(); ctx.ellipse(cx, y, cw * (0.7 + 0.5 * r), th * (1.2 + 0.9 * r), 0, 0, TAU); ctx.stroke(); }
+      }
+      for (const sy of [-1, 1]) {
+        const yy = sy < 0 ? y - th / 2 - ch : y + th / 2, gr = ctx.createLinearGradient(0, yy, 0, yy + ch);
+        gr.addColorStop(0, lit ? '#ffb45a' : '#8a5124'); gr.addColorStop(0.5, lit ? '#ffe0a8' : '#c8803f'); gr.addColorStop(1, lit ? '#e0822e' : '#6d3a17');
+        ctx.fillStyle = gr; ctx.fillRect(cx - cw / 2, yy, cw, ch);
+        ctx.strokeStyle = 'rgba(0,0,0,0.28)'; ctx.lineWidth = 1;
+        for (let i = 1; i < 6; i++) { const xx = cx - cw / 2 + cw * i / 6; ctx.beginPath(); ctx.moveTo(xx, yy + 2); ctx.lineTo(xx, yy + ch - 2); ctx.stroke(); }
+      }
+      if (lit && !home.gunLit) { home.gunLit = true; }
+    });
+    // the can at the end of the range
+    const canX = G.x1 - 18, canH = th * 2.6, canW = th * 1.5, hit = x >= canX - canW / 2 - sl / 2;
+    if (hit && !home.canT) home.canT = home.t;
+    if (u < T1) home.canT = 0;
+    const f = home.canT ? clamp((home.t - home.canT) / 0.45, 0, 1) : 0;
+    ctx.save(); ctx.translate(canX + canW / 2, y + th / 2 + ch); ctx.rotate(f * 1.3); ctx.translate(f * 18, 0);
+    const cg = ctx.createLinearGradient(-canW, 0, 0, 0); cg.addColorStop(0, '#8d9aa4'); cg.addColorStop(0.5, '#e6edf1'); cg.addColorStop(1, '#7c8890');
+    ctx.fillStyle = cg; ctx.fillRect(-canW, -canH, canW, canH); ctx.fillStyle = '#d9483b'; ctx.fillRect(-canW, -canH * 0.68, canW, canH * 0.32);
+    ctx.restore();
+    // the slug, with a little streak once it is fast
+    if (!hit) {
+      const sg = ctx.createLinearGradient(0, y - th * 0.32, 0, y + th * 0.32); sg.addColorStop(0, '#eef2f5'); sg.addColorStop(0.5, '#a3adb5'); sg.addColorStop(1, '#5d666e');
+      ctx.fillStyle = sg; ctx.fillRect(x - sl / 2, y - th * 0.32, sl, th * 0.64);
+      if (u > T1 + 0.3) { const lg = ctx.createLinearGradient(x - sl * 2.5, 0, x - sl / 2, 0); lg.addColorStop(0, 'rgba(255,220,170,0)'); lg.addColorStop(1, 'rgba(255,220,170,0.4)'); ctx.fillStyle = lg; ctx.fillRect(x - sl * 2.5, y - th * 0.15, sl * 2, th * 0.3); }
+    }
     ctx.restore();
   }
   function heroStatic(g) {                                // iron yoke, coil ring and vacuum chamber, drawn once per size
@@ -204,7 +255,7 @@
     let px, py;
     if (k < HALF) { [px, py] = pos(sp[k], frac); if (frac < 0.06 && k > 0 && !reduceMotion) for (let i = 0; i < 2; i++) home.sparks.push({ x: cx, y: py, vx: (Math.random() - 0.5) * 90, vy: (Math.random() - 0.5) * 90, life: 0.35 }); }
     else {
-      const s = sp[HALF - 1], [ex, ey] = pos(s, 1), te = tc - HALF * HALF_T, L = Math.min(1, te / EXIT_T) * (W - ex + 40);
+      const s = sp[HALF - 1], [ex, ey] = pos(s, 1), te = tc - HALF * HALF_T, L = Math.min(1, te / EXIT_T) * ((g.wide ? g.cx + g.half / 2 - 8 : W + 40) - ex);
       const dx = (HALF - 1) % 2 ? 1 : -1, gr = ctx.createLinearGradient(ex, ey, ex + dx * L, ey);   // leaves along the tangent: rightwards at the bottom
       gr.addColorStop(0, 'rgba(255,90,60,0.9)'); gr.addColorStop(1, 'rgba(255,210,140,0.9)');
       ctx.strokeStyle = gr; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + dx * L, ey); ctx.stroke();
@@ -212,7 +263,7 @@
       for (let i = 0; i < HALF; i++) { const s2 = sp[i]; ctx.strokeStyle = pal[Math.round(i / (HALF - 1) * 63)]; ctx.lineWidth = 2.2; ctx.globalAlpha = (g.wide ? 1 : 0.42) * Math.max(0, 1 - te / (EXIT_T + 0.6)); ctx.beginPath(); ctx.arc(cx, cy + s2.cy, s2.r, s2.a0, s2.a0 - Math.PI, true); ctx.stroke(); }
       ctx.globalAlpha = g.wide ? 1 : 0.42;
     }
-    if (px > -20 && px < W + 20) {
+    if (px > -20 && px < W + 20 && (!g.wide || px < g.cx + g.half / 2 - 4)) {
       const gl = ctx.createRadialGradient(px, py, 0, px, py, 22); gl.addColorStop(0, 'rgba(255,240,210,1)'); gl.addColorStop(0.3, 'rgba(255,170,90,0.7)'); gl.addColorStop(1, 'rgba(255,120,60,0)');
       ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(px, py, 22, 0, TAU); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(px, py, 3.2, 0, TAU); ctx.fill();
@@ -223,6 +274,7 @@
     if (!(CL.intro && CL.intro.on)) home.noteT = (home.noteT || 0) + dt;   // the notes are written once the title sequence is over
     drawNotes(ctx, g);
     ctx.restore();
+    drawGun(ctx, g, dt, g.wide ? 1 : 0.42);
   }
   function iconBg(ctx, W, H) { const g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, W * 0.7); g.addColorStop(0, '#131c17'); g.addColorStop(1, '#070a08'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
   function drawIcon(ic, t) {
@@ -258,22 +310,6 @@
         if (on) { ctx.fillStyle = 'rgba(255,160,60,0.35)'; ctx.beginPath(); ctx.arc(xc, y, cw * 1.1, 0, TAU); ctx.fill(); }
       }
       if (sx > 0) { ctx.fillStyle = '#c4cbd2'; ctx.fillRect(sx - 9, y - 3, 18, 6); if (ph > 0.55) { const gr = ctx.createLinearGradient(sx - 40, 0, sx - 9, 0); gr.addColorStop(0, 'rgba(255,220,170,0)'); gr.addColorStop(1, 'rgba(255,220,170,0.6)'); ctx.fillStyle = gr; ctx.fillRect(sx - 40, y - 2, 31, 4); } }
-    } else if (ic.kind === 'collide') {
-      const ph = (t * 0.6) % 1.4;
-      if (ph < 0.5) {
-        const d = (0.5 - ph) / 0.5 * W * 0.42;
-        for (const [x, c] of [[cx - d, '#4dc3ff'], [cx + d, '#ff6a9a']]) { const gl = ctx.createRadialGradient(x, cy, 0, x, cy, 10); gl.addColorStop(0, c); gl.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(x, cy, 10, 0, TAU); ctx.fill(); }
-      } else {
-        const f = (ph - 0.5) / 0.9;
-        ctx.strokeStyle = `rgba(255,230,180,${1 - f})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, f * s * 0.5, 0, TAU); ctx.stroke();
-        ['#ffd43b', '#ff922b', '#63e6be', '#da77f2', '#4dabf7', '#ff6b6b'].forEach((c, i, arr) => {
-          const a = i / arr.length * TAU + 0.4, r = f * s * 0.48, curl = (i % 2 ? 1 : -1) * 0.9;
-          ctx.strokeStyle = hexA(c, 1 - f * 0.6); ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(cx, cy);
-          for (let k = 1; k <= 12; k++) { const rr = r * k / 12, aa = a + curl * (k / 12) * f; ctx.lineTo(cx + Math.cos(aa) * rr, cy + Math.sin(aa) * rr); }
-          ctx.stroke();
-        });
-        if (f < 0.15) { ctx.fillStyle = `rgba(255,255,255,${0.8 * (1 - f / 0.15)})`; ctx.fillRect(0, 0, W, H); }
-      }
     } else {
       ctx.font = `300 ${Math.round(s * 0.24)}px "Barlow Condensed", "Arial Narrow", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ['F = qv × B', 'r = p / qB', 'f = qB / 2πm'].forEach((l, i) => { ctx.save(); ctx.shadowColor = 'rgba(255,110,20,0.9)'; ctx.shadowBlur = 8; ctx.fillStyle = `rgba(255,207,158,${0.45 + 0.55 * (0.5 + 0.5 * Math.sin(t * 1.5 + i * 2))})`; ctx.fillText(l, cx, H * (0.25 + 0.25 * i)); ctx.restore(); });
@@ -291,8 +327,8 @@
     { sel: '#screen-lab .tiles', title: 'Live readouts', text: 'Speed, kinetic energy, orbit radius and laps, glowing like the nixie tubes on old lab instruments.' },
     { sel: '#screen-lab .data', title: 'Every number explained', text: 'The notebook explains each quantity in words. Show working puts your own numbers into each formula, step by step.' },
     { sel: '.lvl', title: 'Beginner or Intermediate', text: 'Beginner keeps only the main controls and adds plain-language notes and ? buttons. Intermediate adds the extra controls (pole gap, RF mode, relativity, experiments, display tools) and every step of the working.' },
-    { sel: '#btnReal', title: 'Where is this used in real life?', text: 'This key shows where the physics on the current screen is used outside class: PET scans and cancer therapy, Indonesia’s own DECY-13 cyclotron, maglev trains, carbon dating, auroras, the LHC and the chips in your phone. Four of them you can run yourself: the maglev train and the jet catapult (from the Gauss gun), the aurora and the LHC (from the cyclotron), each with a card that shows why it is the same physics.' },
-    { sel: '.nav-screens', title: 'More to explore', text: 'Fire a Gauss gun, smash particles together in the Collider, and test yourself in the physics quiz. Each screen has missions, and a Real life, simulated panel with real machines to run: a maglev train, a jet catapult, the aurora and the LHC.' },
+    { sel: '#btnReal', title: 'Where is this used in real life?', text: 'This key shows where the physics is used outside class: a hospital cyclotron that makes the medicine for cancer scans, and a maglev train pulled by coils in the track. You can run both yourself.' },
+    { sel: '.nav-screens', title: 'More to explore', text: 'Fire a Gauss gun and test yourself in the physics quiz. Each station has a real machine to run: PET medicine in the Cyclotron, the maglev train in the Gauss gun.' },
   ];
   let tourI = -1;
   function tourStart() { showScreen('lab', true); tourI = 0; $('#tour').hidden = false; setTimeout(tourStep, 250); }
@@ -344,7 +380,7 @@
     });
     $('#btnTour').addEventListener('click', tourStart);
     $('#homeTour').addEventListener('click', tourStart);
-    $('#homeRide').addEventListener('click', () => { audio.unlock(); showScreen('lab', true); if (CL.lab) CL.lab.ride(true); });
+    const hr = $('#homeRide'); if (hr) hr.addEventListener('click', () => { audio.unlock(); showScreen('lab', true); if (CL.lab) CL.lab.ride(true); });
     $('#tourNext').addEventListener('click', () => { if (tourI >= TOUR.length - 1) tourEnd(); else { tourI++; tourStep(); } });
     $('#tourBack').addEventListener('click', () => { if (tourI > 0) { tourI--; tourStep(); } });
     $('#tourSkip').addEventListener('click', tourEnd);
@@ -401,7 +437,7 @@
     syncSound();
     home.cv = $('#homeBg');
     home.icons = $$('.hicon').map(cv => ({ cv, kind: cv.dataset.icon, w: 0, h: 0 }));
-    for (const k of ['lab', 'gauss', 'collide', 'physics']) { try { CL.screens[k].init(); } catch (err) { console.error('init ' + k, err); } }
+    for (const k of ['lab', 'gauss', 'physics']) { try { CL.screens[k].init(); } catch (err) { console.error('init ' + k, err); } }
     try { CL.guide.init(); } catch (err) { console.error('guide', err); }
     try { CL.intro.init(); } catch (err) { console.error('intro', err); }
     if (data && data.lab && CL.lab) CL.lab.restore(data.lab);

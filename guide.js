@@ -25,7 +25,6 @@
     ['label[for="r-gg-cutoff"]', 'Switch-off point', 'When each coil turns off. 0 % means exactly when the slug reaches the coil\'s middle. Later than that, the coil pulls the slug back: suck-back.'],
     ['label[for="r-gg-slugCm"]', 'Slug length', 'A longer slug is heavier but magnetises more easily along its length. Try a few lengths and compare the speeds.'],
     ['label[for="r-gg-behind"]', 'Balls behind each magnet', 'With one ball, it touches the magnet and is held too tightly to fly off. With two or more, the last ball is far enough away to escape.'],
-    ['label[for="r-collKa"]', 'Kinetic energy', 'The energy of motion of each beam particle. More energy means a harder smash and more energy available to create new particles.'],
   ];
   let box = null, openBtn = null;
   function attachTips() {

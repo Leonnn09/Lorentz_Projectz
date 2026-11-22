@@ -1859,7 +1859,7 @@
     } else {
       txt = 'Cyclotrons also accelerate deuterons, alpha particles and heavier ions, for nuclear-physics research and for making medical isotopes.';
     }
-    return { id: 'app', label: 'What could this beam do?', val: en(K, 3), sub: txt + ' Try it in the <b>Collider</b>.' };
+    return { id: 'app', label: 'What could this beam do?', val: en(K, 3), sub: txt };
   }
 
   function rowsPredict() {
@@ -2046,14 +2046,22 @@
   function setText(id, txt) { const el = document.getElementById(id); if (el && el.textContent !== txt) el.textContent = txt; }
   const compact = s => s.replace(' × ', '×');
   function updateLive(st) {
-    setText('tileV', compact(e(st.v, 3)) + ' m/s');
-    setText('tileVsub', pct(st.v / C.c) + ' of light speed');
-    setText('tileK', en(st.K, 3));
-    setText('tileKsub', compact(e(st.K, 3)) + ' J');
-    if (st.s.type === 'arc') { setText('tileR', len(st.r, 3)); setText('tileRsub', 'dee radius R = ' + len(S.R)); }
+    const beg = document.body.classList.contains('is-beginner');   // Beginner: plain numbers, no powers of ten
+    if (beg) {
+      setText('tileV', pct(st.v / C.c) + ' of light');
+      setText('tileVsub', Math.round(st.v / 1000).toLocaleString('en-US') + ' km every second');
+      setText('tileK', en(st.K, 3));
+      setText('tileKsub', 'energy of motion: it grows at every push');
+    } else {
+      setText('tileV', compact(e(st.v, 3)) + ' m/s');
+      setText('tileVsub', pct(st.v / C.c) + ' of light speed');
+      setText('tileK', en(st.K, 3));
+      setText('tileKsub', compact(e(st.K, 3)) + ' J');
+    }
+    if (st.s.type === 'arc') { setText('tileR', len(st.r, 3)); setText('tileRsub', beg ? 'the machine is ' + len(S.R) + ' to the edge' : 'dee radius R = ' + len(S.R)); }
     else { setText('tileR', st.s.type === 'exit' ? 'straight' : '∞'); setText('tileRsub', st.s.type === 'exit' ? 'left the field' : 'no field: straight line'); }
     setText('tileN', pl(st.revs, 3));
-    setText('tileNsub', run.rot === 0 && !live ? 'no circular motion' : 'of ≈ ' + pl(pred.nRev, 3) + ' predicted');
+    setText('tileNsub', run.rot === 0 && !live ? 'no circular motion' : beg ? 'of about ' + Math.max(1, Math.round(pred.nRev)) + ' before it leaves' : 'of ≈ ' + pl(pred.nRev, 3) + ' predicted');
 
     const hud = $('#hudStatus');
     let txt, cls = '';
@@ -2111,7 +2119,7 @@
     else if (runEnded() && run.status === 'lost') h = `The particle <b>fell out of step</b> at ${en(run.Kpeak, 3)}: the voltage started arriving at the wrong moment and slowed it down. Near light speed a particle takes longer for each lap (relativity), so the rhythm no longer matches. The <em>Follows particle</em> RF mode fixes this.`;
     else if (ki >= 0 && run.kicks[ki].W < 0) h = 'The pushes now arrive at the <b>wrong moment</b>, so the voltage is slowing the particle down.';
     else if (playT <= 0) h = `Press <b>play</b>. A ${nm} starts in the middle. The magnet bends its path into a circle, and every time it crosses the gap between the two copper dees, the voltage gives it a push, like pushing a swing at just the right moment.`;
-    else h = `Lap ${lap}: the ${nm} is moving at <b>${pct(st.v / C.c, 2)} of the speed of light</b> (${compact(e(st.v, 2))} m/s). Each push makes it faster, and a faster particle needs a bigger circle, so the path <b>spirals outwards</b>. Yet every lap takes the same time: that is the trick that makes a cyclotron work.${live ? ' <em>Chaos mode:</em> changing the field changes the circle size at once.' : ''}`;
+    else h = `Lap ${lap}: the ${nm} is moving at <b>${pct(st.v / C.c, 2)} of the speed of light</b> (${Math.round(st.v / 1000).toLocaleString('en-US')} km every second). Each push makes it faster, and a faster particle needs a bigger circle, so the path <b>spirals outwards</b>. Yet every lap takes the same time: that is the trick that makes a cyclotron work.${live ? ' <em>Chaos mode:</em> changing the field changes the circle size at once.' : ''}`;
     if (el.innerHTML !== h) el.innerHTML = h;
   }
 
