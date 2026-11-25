@@ -51,6 +51,14 @@
     kemkesfw: ['Kemenkes RI: cancer prevention and control framework (cancer is the third leading cause of death in Indonesia; 408,661 new cases and 242,099 deaths in 2022, GLOBOCAN)', 'https://www.kemkes.go.id/eng/layanan/cancer-prevention-and-control-framework', 'Kemenkes'],
     ugm: ['UGM: cancer cases surge in Indonesia; the high death rate is largely due to late diagnosis and treatment', 'https://ugm.ac.id/en/news/cancer-cases-surge-in-indonesia-experts-stress-early-symptom-awareness', 'UGM'],
     acs: ['American Cancer Society: PET scan for cancer (cancer cells take up more of the FDG sugar; PET helps find cancer, stage it and check treatment)', 'https://www.cancer.org/cancer/diagnosis-staging/tests/imaging-tests/pet-scan-for-cancer.html', 'American Cancer Society'],
+    whoosh: ['Bisnis.com (October 2025): Whoosh, Jakarta to Bandung, runs at up to 350 km/h on conventional steel rails; the first high-speed train in Southeast Asia', 'https://ekonomi.bisnis.com/read/20251027/98/1923798/daftar-kereta-tercepat-di-dunia-whoosh-tercepat-di-rel-konvensional', 'Bisnis'],
+    whooshopen: ['Trains.com: Indonesia launches its first high-speed train (passenger service from 2 October 2023)', 'https://www.trains.com/trn/news-reviews/news-wire/indonesia-launches-countrys-first-high-speed-train', 'Trains.com'],
+    brinmag: ['detikInet: a BRIN transport researcher on maglev; China and Japan use it, Indonesia’s high-speed train does not', 'https://inet.detik.com/science/d-7025371/teknologi-maglev-buat-kereta-melayang-tak-sentuh-rel-apa-fungsinya', 'detikInet'],
+    bppt: ['Bisnis.com (February 2016): BPPT evaluates China’s maglev while Indonesia chooses its high-speed train', 'https://ekonomi.bisnis.com/read/20160205/98/516540/kereta-cepat-bppt-kaji-maglev-asal-china', 'Bisnis 2016'],
+    jpi: ['Jurnal Perkeretaapian Indonesia 6(1), 2022: a control system for a maglev train prototype', 'https://garuda.kemdiktisaintek.go.id/documents/detail/2855317', 'JPI'],
+    adhesion: ['Wikipedia: Adhesion railway (the push is the grip between the driving wheels and the rail; steel on steel typically 0.35 to 0.5)', 'https://en.wikipedia.org/wiki/Adhesion_railway', 'Wikipedia'],
+    lsm: ['US patent 3,960,090: a linear-motor vehicle; wheel-on-rail adhesion drops sharply above about 300 km/h', 'https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/3960090', 'patent'],
+    tgv: ['Railway News (2026): TGV record of 574.8 km/h on 3 April 2007, steel wheels; drag power grows as v³', 'https://railwaynews.net/top-10-fastest-trains-in-the-world-2025-speed-ranking.html', 'Railway News'],
     pudong: ['Pudong government: getting to the airport (about 30 km from downtown, an hour’s drive from People’s Square)', 'https://english.pudong.gov.cn/2017-07/19/c_84852_2.htm', 'Pudong government'],
   };
 
@@ -416,6 +424,27 @@
             { k: 'on', label: 'By maglev (this run)', v: tM / 60, txt: mmss(tM) },
           ],
           verdict: `Every passenger saves about <b>${Math.round((tR - tM) / 60)} minutes</b> a trip. Watch the car at the bottom of the view.`,
+        };
+      },
+      vs(sm) {
+        return {
+          title: 'Why can a maglev go faster than a train on wheels?',
+          intro: sm ? 'A train on wheels pushes itself along by the grip of its wheels on the rail, and at high speed there is less grip. A maglev needs no grip: coils in the track pull it, like the coils of your Gauss gun pull the slug.'
+            : 'A wheel train’s push is limited by adhesion: F ≤ μ·W on the driving wheels, and μ falls as speed rises (sharply above about 300 km/h). A maglev’s push comes from a linear motor in the guideway, F set by the coil current, so it does not depend on grip; that is why it can accelerate at up to 1.5 m/s². Both still fight air drag, whose power grows as v³.',
+          head: ['Ordinary fast train (like Whoosh)', 'Maglev (Shanghai)'],
+          short: ['On wheels', 'Maglev'],
+          rows: [
+            ['Held up by', 'steel wheels on steel rails', 'magnets, about 10 mm from the track', ['tri']],
+            ['Pushed by', 'motors turning the wheels; needs grip', 'coils in the track (a linear motor); no grip needed', ['adhesion', 'lsm']],
+            ['0 to 300 km/h', 'about 30 km', 'about 5 km', ['ieee']],
+            ['Fastest in service', '350 km/h (Whoosh; Fuxing in China)', '431 km/h from 2004 to 2021, 300 km/h now', ['whoosh', 'shanghai']],
+            ['Speed record', '574.8 km/h (TGV, France, 2007)', '603 km/h (SCMaglev, Japan, 2015)', ['tgv', 'maglev']],
+            ['Wear and noise', 'wheels and rails wear and must be ground; it rumbles', 'nothing touches, so little wear; quieter', ['tri']],
+            ['Track', 'can also run on ordinary lines', 'needs its own guideway, which is costly', null],
+          ],
+          indoT: 'And in Indonesia?',
+          indo: 'Not yet. Indonesia’s fastest train, Whoosh (Jakarta to Bandung, carrying passengers since 2 October 2023), reaches 350 km/h on steel wheels, not maglev. Maglev has so far only been studied: small prototypes in Indonesian research, and a BPPT review of China’s maglev in 2016. Electric trains here (KRL, MRT, LRT and Whoosh) do use magnetism, but in their motors, which turn wheels.',
+          indoSrc: ['whooshopen', 'brinmag', 'jpi', 'bppt'],
         };
       },
       helps() {
@@ -1177,6 +1206,10 @@
             <h3 class="rsim-helps-t" id="rsHelpsT">Who it helps</h3>
             <ul class="rsim-helps-l" id="rsHelpsL"></ul>
           </section>
+          <section class="card paper rsim-vs" id="rsVs" aria-labelledby="rsVsT" hidden>
+            <h3 class="rsim-helps-t" id="rsVsT"></h3>
+            <div id="rsVsB"></div>
+          </section>
           <section class="card paper rsim-link" id="rsLink" aria-labelledby="rsLinkT">
             <h3 class="rsim-link-t" id="rsLinkT"></h3>
             <p class="rsim-link-x" id="rsLinkX"></p>
@@ -1251,7 +1284,7 @@
     setRun('idle');
     $('#rsTiles').innerHTML = '';
     graphDirty = dataDirty = true; W = 0;
-    renderLink(); linkT = 0; renderWhy(); renderHelps();
+    renderLink(); linkT = 0; renderWhy(); renderHelps(); renderVs();
     if (!fresh) requestAnimationFrame(resize);
     updateUI(true);
   }
@@ -1302,6 +1335,20 @@
     chip: 'M7 7h10v10H7zM9 2.5h2V6H9zm4 0h2V6h-2zM9 18h2v3.5H9zm4 0h2v3.5h-2zM2.5 9H6v2H2.5zm0 4H6v2H2.5zM18 9h3.5v2H18zm0 4h3.5v2H18z',
     syringe: 'M18.4 2.2l3.4 3.4-1.4 1.4-1-1-2.1 2.1 1 1-1.4 1.4-1-1-6.7 6.7-2.8.1-2.2 2.2-1.4-1.4 2.2-2.2.1-2.8 6.7-6.7-1-1 1.4-1.4 1 1 2.1-2.1-1-1z',
   };
+  // Side by side with the everyday version of the same job (for the maglev: an ordinary fast train on wheels)
+  function renderVs() {
+    const box = $('#rsVs');
+    let V = null;
+    try { V = sim && sim.vs ? sim.vs(simple()) : null; } catch (err) { console.error(err); }
+    if (!V) { box.hidden = true; return; }
+    box.hidden = false; $('#rsVsT').textContent = V.title;
+    const link = k => SRC[k] ? `<a href="${SRC[k][1]}" target="_blank" rel="noopener">${esc(SRC[k][2] || SRC[k][0].split(':')[0])}</a>` : '';
+    const h = `<p class="vs-x">${V.intro}</p>
+      <div class="table-wrap"><table class="nb-table vs-t"><thead><tr><th></th><th>${V.head[0]}</th><th>${V.head[1]}</th></tr></thead>
+      <tbody>${V.rows.map(([w, a, m, src]) => `<tr><th scope="row">${w}</th><td data-h="${V.short[0]}">${a}</td><td data-h="${V.short[1]}">${m}${src ? ` <span class="hp-src">(${src.map(link).join(', ')})</span>` : ''}</td></tr>`).join('')}</tbody></table></div>
+      <div class="vs-indo"><b>${V.indoT}</b> ${V.indo} <span class="hp-src">(${V.indoSrc.map(link).join(', ')})</span></div>`;
+    const b = $('#rsVsB'); if (b._h !== h) { b._h = h; b.innerHTML = h; }
+  }
   function renderHelps() {
     const box = $('#rsHelps');
     let L = null;
@@ -1346,7 +1393,7 @@
   function changed() {
     const w = sim.wantSpeed && sim.wantSpeed();
     if (w) { sim._speed = w; renderSpeeds(); }
-    sim.reset(); setRun('idle'); graphDirty = dataDirty = true; updateUI(true); renderLink(); renderWhy(); renderHelps();
+    sim.reset(); setRun('idle'); graphDirty = dataDirty = true; updateUI(true); renderLink(); renderWhy(); renderHelps(); renderVs();
   }
   function setRun(s) {
     runState = s;
@@ -1479,7 +1526,7 @@
     bus.on('level', name => {
       const w = $('#rsWorking'); if (w && w.checked !== (name === 'full')) { w.checked = name === 'full'; working = w.checked; }
       if (!sim) return;
-      dataDirty = graphDirty = true; renderLink(); renderWhy(); renderHelps(); updateUI(true);
+      dataDirty = graphDirty = true; renderLink(); renderWhy(); renderHelps(); renderVs(); updateUI(true);
       if (host) requestAnimationFrame(resize);
     });
     window.addEventListener('resize', () => { if (host) requestAnimationFrame(resize); });

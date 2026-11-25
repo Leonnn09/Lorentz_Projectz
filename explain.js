@@ -17,7 +17,13 @@
 
   /* ---------------- drawing helpers ---------------- */
   function text(c, s, x, y, o = {}) {
-    CL.haloText(c, s, x, y, { font: FONT(o.size || 15, o.w || 600), align: o.align || 'center', base: o.base || 'middle', color: o.color || '#eef2ec', halo: o.halo || 4 });
+    const font = FONT(o.size || 15, o.w || 600), align = o.align || 'center';
+    // keep every label fully on screen: shift it in from the edges instead of letting it be cut off
+    c.save(); c.font = font; const w = c.measureText(s).width; c.restore();
+    const W = c.canvas.clientWidth || c.canvas.width, m = 8;
+    const left = align === 'left' || align === 'start' ? x : align === 'right' || align === 'end' ? x - w : x - w / 2;
+    if (w + 2 * m <= W) { if (left < m) x += m - left; else if (left + w > W - m) x -= left + w - (W - m); }
+    CL.haloText(c, s, x, y, { font, align, base: o.base || 'middle', color: o.color || '#eef2ec', halo: o.halo || 5 });
   }
   function glow(c, x, y, r, rgb, a = 1) {
     if (!(r > 0.5) || a <= 0) return;
@@ -37,7 +43,13 @@
   }
   function rrect(c, x, y, w, h, r) { c.beginPath(); if (c.roundRect) c.roundRect(x, y, w, h, r); else c.rect(x, y, w, h); }
   function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
-  const fz = b => clamp(Math.min(b.w, b.h * 1.8) / 40, 14, 22);      // label size for this scene box
+  const fz = b => clamp(Math.min(b.w, b.h * 1.8) / 32, 14.5, 26);      // label size for this scene box
+  // split a sentence into lines no wider than w at this font
+  function wrap(c, s, w, font) {
+    c.save(); c.font = font; const out = []; let ln = '';
+    for (const word of String(s).split(' ')) { const tr = ln ? ln + ' ' + word : word; if (c.measureText(tr).width > w && ln) { out.push(ln); ln = word; } else ln = tr; }
+    if (ln) out.push(ln); c.restore(); return out;
+  }
 
   /* ======================================================================
      THE CYCLOTRON
@@ -331,6 +343,68 @@
     const vEnd = v1 * Math.sqrt(n);
     return { x: pts[n] + vEnd * (tt - t), v: vEnd, coil: -1, after: true, tEnd: t };
   }
+  // "Which knob makes it faster?": one knob changed at a time from the default gun, speeds from the app's own coil-gun model
+  let knobCache = null;
+  function knobData() {
+    if (knobCache) return knobCache;
+    const base = { stages: 4, turns: 200, current: 120, slugLen: 0.025, material: 'iron', cutoff: 0, real: false };
+    const run = o => { try { return PHYS.coilgun(Object.assign({}, base, o)); } catch (err) { console.error(err); return null; } };
+    const vOf = r => r && r.status === 'fired' ? r.vExit : 0;
+    const r0 = run({}), r8 = run({ stages: 8 }), rI = run({ current: 240 }), rN = run({ turns: 400 }), rC = run({ cutoff: 0.5 });
+    if (!r0) return null;
+    const m = r0.m, v0 = vOf(r0), K = v => 0.5 * m * v * v, K0 = K(v0), W0 = K0 / 4;
+    const Bl = (N, I) => 4e-7 * Math.PI * N * I / 0.03;                    // B = μ₀NI/ℓ, ℓ = 3 cm
+    const f1 = x => x.toFixed(1), f2 = x => x.toFixed(2);
+    knobCache = { v0, m, K0, rows: [
+      { k: 'Number of coils', ch: '4 → 8', v: vOf(r8), why: 'more pushes',
+        f: `½mv² = n·W = 8 × ${f2(W0)} J ≈ ${f1(8 * W0)} J, so v = √(2W/m) ≈ ${f1(Math.sqrt(2 * 8 * W0 / m))} m/s` },
+      { k: 'Current in each coil', ch: '120 → 240 A', v: vOf(rI), why: 'a stronger magnet',
+        f: `B = μ₀NI/ℓ: ${f1(Bl(200, 120))} → ${f1(Bl(200, 240))} T; the iron is full, so F ∝ I: ${f1(r0.Fpk)} → ${f1(rI.Fpk)} N` },
+      { k: 'Turns per coil', ch: '200 → 400', v: vOf(rN), why: 'a stronger magnet',
+        f: `B = μ₀NI/ℓ: ${f1(Bl(200, 120))} → ${f1(Bl(400, 120))} T, but the new turns sit farther out: work ×${f2(K(vOf(rN)) / K0)}` },
+      { k: 'Switch-off point', ch: '0 → 50 % (late)', v: vOf(rC), why: 'it pulls the slug back',
+        f: `W = W_push − W_pull-back: ½mv² = ${f2(K0)} → ${f2(K(vOf(rC)))} J (${f2(K0 - K(vOf(rC)))} J lost)` },
+    ] };
+    return knobCache;
+  }
+  function knobStep(c, t, b) {
+    const D = knobData(); if (!D) return;
+    const F = fz(b), nar = b.w < 700, n = D.rows.length;
+    const vmax = Math.max(D.v0, ...D.rows.map(r => r.v)) * 1.05;
+    const rh = Math.min(b.h / (n + 0.35), nar ? 128 : 112), y0 = b.y + (b.h - rh * n) / 2 + rh * 0.45;
+    D.rows.forEach((R, i) => {
+      const a = clamp((t - 0.3 - i * 0.7) / 0.5, 0, 1), grow = ease(clamp((t - 0.5 - i * 0.7) / 0.9, 0, 1));
+      const faster = R.v > D.v0 + 0.05, col = faster ? '157,245,184' : '255,140,120', y = y0 + i * rh;
+      c.save(); c.globalAlpha = a;
+      c.fillStyle = 'rgba(16,24,28,0.85)'; rrect(c, b.x, y - rh * 0.44, b.w, rh * 0.88, 12); c.fill();
+      c.strokeStyle = `rgba(${col},${0.25 + 0.3 * grow})`; c.lineWidth = 1.2; rrect(c, b.x, y - rh * 0.44, b.w, rh * 0.88, 12); c.stroke();
+      const bx = nar ? b.x + 12 : b.x + b.w * 0.3, bw = nar ? b.w - 24 - F * 3.6 : b.w * 0.5, bh = Math.max(7, rh * 0.11);
+      if (nar) {
+        text(c, `${R.k}: ${R.ch}`, b.x + 12, y - rh * 0.29, { size: F * 0.9, w: 700, color: '#ffd9a8', align: 'left' });
+        text(c, faster ? 'faster' : 'slower', b.x + b.w - 12, y - rh * 0.29, { size: F * 0.9, w: 700, color: `rgb(${col})`, align: 'right' });
+      } else {
+        text(c, R.k, b.x + 18, y - F * 0.65, { size: F * 1.05, w: 700, color: '#ffd9a8', align: 'left' });
+        text(c, R.ch, b.x + 18, y + F * 0.6, { size: F * 0.95, color: '#eef2ec', align: 'left' });
+        text(c, faster ? 'faster' : 'slower', b.x + b.w - 18, y - F * 0.65, { size: F * 1.15, w: 700, color: `rgb(${col})`, align: 'right' });
+        text(c, R.why, b.x + b.w - 18, y + F * 0.6, { size: F * 0.85, color: `rgba(${col},0.85)`, align: 'right' });
+      }
+      // before (grey) and after (green or red), on the same scale
+      const yb1 = nar ? y - rh * 0.19 : y - rh * 0.34, yb2 = yb1 + bh * 1.5;
+      c.fillStyle = 'rgba(255,255,255,0.06)'; rrect(c, bx, yb1, bw, bh, 4); c.fill(); rrect(c, bx, yb2, bw, bh, 4); c.fill();
+      c.fillStyle = 'rgba(200,206,210,0.55)'; rrect(c, bx, yb1, bw * D.v0 / vmax, bh, 4); c.fill();
+      const vNow = lerp(D.v0, R.v, grow);
+      c.fillStyle = `rgb(${col})`; rrect(c, bx, yb2, bw * vNow / vmax, bh, 4); c.fill();
+      // the formula, with the numbers in it
+      const fzF = nar ? F * 0.8 : F * 0.95, fw = nar ? b.w - 24 : b.w * 0.52;
+      c.save(); c.font = FONT(fzF, 600); const tw0 = c.measureText(R.f).width; c.restore();
+      const fz1 = tw0 > fw ? Math.max(F * 0.62, fzF * fw / tw0) : fzF;              // one line: shrink to fit rather than wrap
+      text(c, R.f, nar ? b.x + 12 : bx, nar ? y + rh * 0.26 : y + rh * 0.22, { size: fz1, color: `rgba(255,230,190,${0.55 + 0.4 * grow})`, align: 'left' });
+      const lab = nar ? F * 0.75 : F * 0.82;
+      text(c, `${D.v0.toFixed(0)} m/s`, bx + bw * D.v0 / vmax + 6, yb1 + bh / 2, { size: lab, color: 'rgba(220,226,230,0.8)', align: 'left' });
+      text(c, `${vNow.toFixed(0)} m/s`, bx + bw * vNow / vmax + 6, yb2 + bh / 2, { size: lab, w: 700, color: `rgb(${col})`, align: 'left' });
+      c.restore();
+    });
+  }
   const gauss = {
     kicker: 'How it works', title: 'The Gauss gun', done: 'Start the Gauss gun',
     steps: [
@@ -362,7 +436,8 @@
           const g = ggGeom(b, 1), P = 4, u = t % P, flip = u >= P / 2 ? -1 : 1, xc = g.coils[0], x = g.start + (xc - g.start) * 0.35 + Math.sin(t * 2) * 3;
           ggTube(c, g); ggCoil(c, g, xc, 1, b, flip > 0 ? 'current one way' : 'current reversed');
           ggSlug(c, g, x);
-          const cl = xc - g.cw * 0.75, cr = xc + g.cw * 0.75, sl = x - g.sl / 2 + 8, sr = x + g.sl / 2 - 8;
+          const cl = xc - g.cw * 0.75, cr = xc + g.cw * 0.75, gapL = fz(b) * 1.5;
+          let sr = Math.min(x + g.sl / 2 - 8, cl - gapL), sl = Math.min(x - g.sl / 2 + 8, sr - gapL);   // on small screens the letters must not overlap
           const N = '#e5483f', Sc = '#3e7ee6', yL = g.y - g.th * 2.5;
           text(c, flip > 0 ? 'N' : 'S', cl, yL, { size: fz(b) * 1.4, w: 700, color: flip > 0 ? N : Sc });
           text(c, flip > 0 ? 'S' : 'N', cr, yL, { size: fz(b) * 1.4, w: 700, color: flip > 0 ? Sc : N });
@@ -402,7 +477,7 @@
           }
           text(c, 'speed after each coil', bx - 1.5 * (bw + 8), by - bh - 16, { size: fz(b) * 0.9, color: '#ffd9a8' });
         } },
-      { main: 'Out it flies!', sub: 'That is a Gauss gun (a coil gun). Now build your own!', eq: 'K = ½mv²: 33 m/s here; only about 9 % of the electrical energy reaches the slug, the rest heats the copper',
+      { main: 'Out it flies!', sub: 'That is a Gauss gun (a coil gun). Next: which knob makes it faster?', eq: 'K = ½mv²: 33 m/s here; only about 9 % of the electrical energy reaches the slug, the rest heats the copper',
         draw(c, t, b, S) {
           const g = ggGeom(b), P = 4.4, u = t % P, v1 = (g.coils[0] - g.start) * 1.5, r = ggRun(g, 4, v1, u), loop = Math.floor(t / P);
           ggTube(c, g); g.coils.forEach((x, i) => ggCoil(c, g, x, r.coil === i ? 1 : 0, b, ''));
@@ -422,6 +497,9 @@
           if (!S.hit) ggSlug(c, g, x);
           if (x > gate2) text(c, 'fast!', (gate1 + gate2) / 2, g.y + g.th * 2.2, { size: fz(b) * 1.1, color: '#ffcf8a' });
         } },
+      { main: 'Which knob makes it faster?', sub: 'Two ways: give each coil a stronger magnet (more current or more turns), or add more coils (more pushes). And switch each coil off at its middle, or it pulls the slug back.',
+        eq: 'one rule for all four: ½mv² = total work, so v = √(2W/m). Twice the work gives about 1.4 times the speed.  ·  the slug: m = 5.56 g of iron',
+        draw(c, t, b) { knobStep(c, t, b); } },
     ],
   };
 
@@ -679,20 +757,165 @@
           text(c, `${Math.round(kmh)} km/h`, b.x + b.w * 0.7, y, { size: fz(b) * 2.2, color: '#9df5b8' });
           text(c, 'speed of the train', b.x + b.w * 0.7, y + fz(b) * 1.7, { size: fz(b) * 0.9, color: 'rgba(157,245,184,0.8)' });
         } },
-      { main: 'To stop, the same coils work backwards.', sub: 'The pull is moved behind the train’s magnets, so it slows the train down, and the motor gives energy back to the power grid. Nothing rubs, so nothing wears out.',
-        eq: 'braking as a generator: the train’s kinetic energy ½mv² goes back into the grid',
+      { main: 'To stop, the same coils pull backwards.', sub: 'The computer shifts the timing of the current, so the pull sits just behind the train’s magnets instead of just ahead. It is the Gauss gun’s suck-back, used on purpose. The moving magnets make the coils work like a dynamo, so the energy goes back to the grid.',
+        eq: 'v = 2τf: as the train slows, the coils switch more slowly too  ·  moving magnets induce a voltage, ε = −dΦ/dt  ·  ½mv² goes back into the grid instead of heating brake pads',
         draw(c, t, b, S) {
-          const P = 6, u = t % P, v = Math.max(0, 1 - u / 4.5);
-          S.sc = (u < 0.05 ? 0 : (S.sc || 0)) + v * 260 * (S.dt || 0.016);
-          const s = mgScene(c, b, { scroll: S.sc, shift: S.sc - 40 });     // the pull sits behind the magnets: it holds the train back
-          const tr = mgTrain(c, b, b.x + b.w / 2, s.yG, { gh: s.gh });
-          const L = tr.L, xB = b.x + b.w / 2 - L / 2 - 20, ay = tr.y - 22;
-          if (v > 0.02) { arrow(c, b.x + b.w / 2 + L * 0.3, ay, b.x + b.w / 2 - L * 0.1, ay, '#ff8fc8', 3); text(c, 'brake: the pull is behind', b.x + b.w / 2 + L * 0.1, ay - fz(b) * 1.1, { size: fz(b), color: '#ffb0e0' }); }
-          // energy back to the grid
-          const gx = Math.max(b.x + 50, xB - 40), gy = b.y + b.h * 0.18;
-          c.fillStyle = '#39424a'; c.fillRect(gx - 34, gy - 20, 68, 40); text(c, 'power grid', gx, gy, { size: fz(b) * 0.85, color: '#dfe8ee' });
-          if (v > 0.02) for (let i = 0; i < 4; i++) { const f = ((t * 1.2 + i / 4) % 1); glow(c, lerp(b.x + b.w / 2 - L * 0.3, gx, f), lerp(s.yG, gy + 20, f), 7, '255,220,120', 0.9 * v); }
-          text(c, `${Math.round(v * 300)} km/h`, b.x + b.w * 0.82, b.y + b.h * 0.18, { size: fz(b) * 2, color: '#9df5b8' });
+          const F = fz(b), nar = b.w < 700;
+          // ---- left (or top): a Gauss gun coil left on too long ----
+          const A = nar ? { x: b.x, y: b.y, w: b.w, h: b.h * 0.4 } : { x: b.x, y: b.y, w: b.w * 0.37, h: b.h };
+          const P = 6, u = t % P;
+          if (S.pu === undefined || u < S.pu) { S.gx = -1.3; S.gv = 0; }             // restart: the slug at rest at the coil's mouth
+          S.pu = u;
+          const dt = Math.min(0.05, S.dt || 0.016);
+          if (u > 0.6) for (let k = 0; k < 6; k++) { const h = dt / 6, X = S.gx, a = -34 * X * Math.exp(-X * X) - 0.8 * S.gv; S.gv += a * h; S.gx += S.gv * h; }
+          const tubeY = A.y + A.h * (nar ? 0.58 : 0.5), th = clamp(A.h * (nar ? 0.12 : 0.07), 10, 22), cw = Math.min(A.w * 0.26, 150), xc = A.x + A.w * 0.55;
+          text(c, 'Gauss gun: a coil left on too long', A.x + A.w / 2, A.y + F * 1.1, { size: F, w: 700, color: '#ffd9a8' });
+          c.fillStyle = 'rgba(220,235,240,0.08)'; c.fillRect(A.x + 6, tubeY - th / 2, A.w - 12, th); c.strokeStyle = 'rgba(220,235,240,0.35)'; c.lineWidth = 1; c.strokeRect(A.x + 6, tubeY - th / 2, A.w - 12, th);
+          const on = u > 0.6;
+          if (on) glow(c, xc, tubeY, cw * 0.9, '255,170,70', 0.35);
+          for (const y of [tubeY - th / 2 - th * 1.2, tubeY + th / 2]) { c.fillStyle = on ? '#e9944a' : '#8f4f1f'; c.fillRect(xc - cw / 2, y, cw, th * 1.2); }
+          c.strokeStyle = 'rgba(255,220,160,0.6)'; c.setLineDash([4, 4]); c.beginPath(); c.moveTo(xc, tubeY - th * 2); c.lineTo(xc, tubeY + th * 2); c.stroke(); c.setLineDash([]);
+          text(c, 'middle', xc, tubeY + th * 2.6, { size: F * 0.8, color: 'rgba(255,220,160,0.85)' });
+          text(c, on ? 'coil ON, and it stays on' : 'coil off', xc, tubeY - th * 2.6, { size: F * 0.85, color: on ? '#ffcf8a' : 'rgba(220,226,230,0.7)' });
+          const sx = xc + S.gx * cw * 0.9, sl = cw * 0.55;
+          c.fillStyle = '#b8c0c6'; rrect(c, sx - sl / 2, tubeY - th * 0.32, sl, th * 0.64, 3); c.fill();
+          if (on) {
+            const f = -S.gx * Math.exp(-S.gx * S.gx), mag = Math.min(1, Math.abs(f) * 2.2);
+            if (mag > 0.06) {
+              const speeding = f * S.gv > 0, col = speeding ? '#7ee2a0' : '#ff7a8a', dir = Math.sign(f);
+              arrow(c, sx, tubeY - th * 1.0, sx + dir * (16 + 50 * mag), tubeY - th * 1.0, col, 3);
+              text(c, speeding ? 'pulled forwards: faster' : 'pulled back: slower', sx + dir * (22 + 50 * mag) + dir * 4, tubeY - th * 1.0, { size: F * 0.8, color: col, align: dir > 0 ? 'left' : 'right' });
+            }
+          }
+          if (u > 3.8) text(c, 'suck-back: it ends up stuck in the middle', A.x + A.w / 2, A.y + A.h - F * (nar ? 0.4 : 1.6), { size: F * 0.9, color: '#ff9aa8' });
+          // ---- right (or bottom): the maglev uses that pull on purpose ----
+          const B = nar ? { x: b.x, y: b.y + b.h * 0.46, w: b.w, h: b.h * 0.54 } : { x: b.x + b.w * 0.42, y: b.y, w: b.w * 0.58, h: b.h };
+          if (!nar) { c.strokeStyle = 'rgba(255,255,255,0.08)'; c.beginPath(); c.moveTo(b.x + b.w * 0.395, b.y + 10); c.lineTo(b.x + b.w * 0.395, b.y + b.h - 10); c.stroke(); }
+          text(c, 'Maglev: the same pull, used on purpose', B.x + B.w / 2, B.y + F * 1.1, { size: F, w: 700, color: '#9df5b8' });
+          const Q = 9, q = t % Q, drive = q < 3, shiftP = clamp((q - 3) / 0.6, 0, 1);
+          const vk = q < 3.6 ? 300 : 300 * Math.max(0, 1 - (q - 3.6) / 4.6), vpx = vk / 300 * 220;
+          S.ms = (q < 0.05 ? 0 : (S.ms || 0)) + vpx * dt;
+          const tp = Math.min(B.w / 5.2, 120), delta = lerp(0.32, -0.32, ease(shiftP)) * tp;       // where the pull sits: ahead of each magnet, then behind
+          const yT = B.y + B.h * (nar ? 0.2 : 0.22), magH = clamp(B.h * 0.09, 12, 26), yM = yT + magH * 2.2, gap = magH * 0.55, yS = yM + magH + gap;
+          const tx0 = B.x + B.w * 0.14, tx1 = B.x + B.w * 0.86;
+          // the train's underside and its magnets (alternately N and S)
+          c.fillStyle = '#dfe4e8'; rrect(c, tx0 - 10, yT, tx1 - tx0 + 20, magH * 2.2, 8); c.fill();
+          c.fillStyle = '#2b343b'; c.fillRect(tx0 + 6, yT + magH * 0.45, tx1 - tx0 - 12, magH * 0.5);
+          const mags = []; for (let x = tx0 + tp * 0.5, k = 0; x < tx1; x += tp, k++) mags.push({ x, n: k % 2 === 0 });
+          for (const m of mags) {
+            c.fillStyle = m.n ? '#e5483f' : '#3e7ee6'; rrect(c, m.x - tp * 0.28, yM, tp * 0.56, magH, 3); c.fill();
+            text(c, m.n ? 'N' : 'S', m.x, yM + magH / 2, { size: magH * 0.75, w: 700, color: '#fff' });
+          }
+          // the coils in the track: their poles make a pattern that rides along with the train, just ahead of (or behind) its magnets
+          const w3 = tp / 3, X0 = mags[0].x;
+          for (let i = -2; i < (B.w / w3) + 2; i++) {
+            const x = B.x + ((i * w3 - S.ms) % (B.w + 4 * w3) + (B.w + 4 * w3)) % (B.w + 4 * w3) - 2 * w3;
+            if (x < B.x + 4 || x > B.x + B.w - 4) continue;
+            const p = -Math.cos(Math.PI * (x - X0 - delta) / tp);
+            c.fillStyle = p > 0 ? `rgba(229,72,63,${0.2 + 0.7 * p})` : `rgba(62,126,230,${0.2 - 0.7 * p})`; rrect(c, x - w3 * 0.42, yS, w3 * 0.84, magH * 0.8, 2); c.fill();
+          }
+          c.fillStyle = '#5d666d'; c.fillRect(B.x + 4, yS + magH * 0.8 + 2, B.w - 8, 5);
+          // the pull on each magnet, towards the nearest opposite pole in the track
+          const col = drive ? '#7ee2a0' : shiftP < 1 ? '#ffd27a' : '#ff8fc8';
+          for (const m of mags) { const d = Math.sign(delta) || 1; arrow(c, m.x, yM + magH + gap * 0.5, m.x + d * Math.min(Math.abs(delta), tp * 0.34) * 0.9, yM + magH + gap * 0.5, col, 2); }
+          const lab = drive ? 'driving: the pull is just ahead of each magnet' : shiftP < 1 ? 'the computer shifts the timing of the current…' : 'braking: the pull is just behind each magnet';
+          text(c, lab, B.x + B.w / 2, yS + magH * 2.3, { size: F * 0.9, color: col });
+          // speed, switching frequency and the energy going back
+          const f = vk / 3.6 / (2 * 0.26), ry = Math.min(B.y + B.h - F * 1.4, yS + magH * 2.3 + F * 2.6);
+          text(c, `${Math.round(vk)} km/h`, B.x + B.w * 0.22, ry, { size: F * 1.6, w: 700, color: '#9df5b8' });
+          text(c, `coils switch ${Math.round(f)} times a second`, B.x + B.w * 0.22, ry + F * 1.4, { size: F * 0.78, color: 'rgba(220,226,230,0.8)' });
+          const gx = B.x + B.w * 0.82, gy = ry;
+          c.fillStyle = '#39424a'; rrect(c, gx - 48, gy - 18, 96, 36, 6); c.fill(); text(c, 'power grid', gx, gy, { size: F * 0.85, color: '#dfe8ee' });
+          if (!drive && shiftP >= 1 && vk > 3) for (let i = 0; i < 5; i++) { const ff = (t * 1.1 + i / 5) % 1; glow(c, lerp(B.x + B.w * 0.55, gx, ff), lerp(yS + magH, gy - 18, ff), 6, '255,220,120', 0.9); }
+          if (!drive && shiftP >= 1 && !nar) text(c, 'energy back', gx, gy - F * 1.6, { size: F * 0.8, color: '#ffd27a' });
+        } },
+      { main: 'Wheels need grip. Magnets don’t.', sub: 'A normal train pushes itself along by the grip of its steel wheels on the rail, and the faster it goes, the less grip there is. A maglev needs no grip: the coils in the track pull it along directly.',
+        eq: 'wheel train: push ≤ μ × weight on the driving wheels, and μ falls at high speed  ·  maglev: 0 to 300 km/h in about 5 km; a fast wheel train needs about 30 km',
+        draw(c, t, b, S) {
+          const P = 9.5, u = t % P, F = fz(b), nar = b.w < 700;
+          const vM = 300 * clamp((u - 0.4) / 1.1, 0, 1), vW = 300 * clamp((u - 0.4) / 6.6, 0, 1);    // the same top speed; the maglev gets there 6 times sooner
+          S.sM = (S.sM || 0) + vM * 0.9 * (S.dt || 0.016); S.sW = (S.sW || 0) + vW * 0.9 * (S.dt || 0.016);
+          const L = Math.min(b.w * (nar ? 0.5 : 0.3), 360), H = clamp(b.h * 0.1, 22, 40), tx = b.x + (nar ? b.w * 0.42 : b.w * 0.36);
+          const lanes = [{ y: b.y + b.h * 0.4, kind: 'wheel' }, { y: b.y + b.h * 0.88, kind: 'mag' }];
+          for (const ln of lanes) {
+            const yG = ln.y, wheel = ln.kind === 'wheel', v = wheel ? vW : vM, sc = wheel ? S.sW : S.sM;
+            // the ground under it, sliding past at its speed
+            if (wheel) {
+              c.fillStyle = '#8b939a'; c.fillRect(b.x, yG, b.w, 4);
+              c.fillStyle = '#5b4636'; for (let x = b.x - ((sc % 34) + 34) % 34; x < b.x + b.w; x += 34) c.fillRect(x, yG + 4, 18, 6);
+            } else {
+              const gg = c.createLinearGradient(0, yG, 0, yG + 12); gg.addColorStop(0, '#c9d1d6'); gg.addColorStop(1, '#7d878e'); c.fillStyle = gg; c.fillRect(b.x, yG, b.w, 12);
+              for (let x = b.x - ((sc % 36) + 36) % 36; x < b.x + b.w; x += 36) { c.fillStyle = 'rgba(229,72,63,0.8)'; c.fillRect(x + 3, yG + 7, 12, 4); c.fillStyle = 'rgba(62,126,230,0.8)'; c.fillRect(x + 21, yG + 7, 12, 4); }
+            }
+            // the train
+            const gap = wheel ? 0 : 9, y = yG - gap - (wheel ? 10 : 0) - H;
+            const gr = c.createLinearGradient(0, y, 0, y + H); gr.addColorStop(0, wheel ? '#f4f0e6' : '#f1f4f6'); gr.addColorStop(1, wheel ? '#b8b0a0' : '#aeb8bf');
+            c.fillStyle = gr; c.beginPath(); c.moveTo(tx - L / 2, y + H); c.lineTo(tx - L / 2, y + 6); c.quadraticCurveTo(tx - L / 2, y, tx - L / 2 + 8, y);
+            c.lineTo(tx + L / 2 - H * 1.3, y); c.quadraticCurveTo(tx + L / 2, y + H * 0.2, tx + L / 2, y + H); c.closePath(); c.fill();
+            c.fillStyle = '#26323b'; c.fillRect(tx - L / 2 + 10, y + H * 0.25, L - H * 1.6, H * 0.24);
+            c.fillStyle = wheel ? '#c0392b' : '#e2b13c'; c.fillRect(tx - L / 2, y + H * 0.68, L - H * 0.25, 3);
+            if (wheel) {
+              const wr = 6;
+              for (const f of [0.12, 0.24, 0.7, 0.82]) {
+                const wx = tx - L / 2 + L * f; c.fillStyle = '#2c3135'; c.beginPath(); c.arc(wx, yG - wr, wr, 0, TAU); c.fill();
+                c.strokeStyle = '#9aa3aa'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(wx, yG - wr); c.lineTo(wx + Math.cos(sc / wr) * wr, yG - wr + Math.sin(sc / wr) * wr); c.stroke();
+                glow(c, wx, yG, 8, '255,190,90', 0.55);                         // the tiny patch where wheel meets rail: all the push goes through here
+              }
+              const grip = 1 - 0.45 * (vW / 300);                                // grip falls as the train goes faster
+              const gx = tx + L * 0.6, gy = y + H * 0.1;
+              if (!nar) {
+                c.fillStyle = 'rgba(255,255,255,0.1)'; rrect(c, gx, gy, 14, H + 6, 3); c.fill();
+                c.fillStyle = '#ffb45a'; rrect(c, gx, gy + (H + 6) * (1 - grip), 14, (H + 6) * grip, 3); c.fill();
+                text(c, 'grip', gx + 7, gy - F * 0.7, { size: F * 0.8, color: '#ffd9a8' });
+              }
+              text(c, 'all the push goes through where wheel meets rail', tx, yG + F * 1.4, { size: F * 0.85, color: 'rgba(255,217,168,0.9)' });
+            } else {
+              for (const f of [0.15, 0.4, 0.65, 0.85]) arrow(c, tx - L / 2 + L * f, yG - 1, tx - L / 2 + L * f, yG - gap + 1, '#7ee2a0', 1.5);
+              arrow(c, tx + L * 0.2, y - 12, tx + L * 0.2 + 60, y - 12, '#ff8fc8', 3);
+              text(c, 'pulled by the track', tx + L * 0.2 + 30, y - 12 - F * 0.9, { size: F * 0.85, color: '#ffb0e0' });
+            }
+            // label and speed
+            text(c, wheel ? 'fast train on wheels' : 'maglev', b.x + 6, y - F * (wheel ? 1.2 : 2.1), { size: F, color: wheel ? '#ffd9a8' : '#9df5b8', align: 'left' });
+            const rx = nar ? b.x + b.w - 6 : b.x + b.w * 0.86;
+            text(c, `${Math.round(v)} km/h`, rx, y - F * (nar ? 0.2 : 0.5), { size: F * (nar ? 1.4 : 1.9), w: 700, color: wheel ? '#ffd9a8' : '#9df5b8', align: nar ? 'right' : 'center' });
+            if (v >= 299.5) text(c, `0 to 300 km/h in about ${wheel ? 30 : 5} km`, rx, y + F * (nar ? 1.0 : 1.25), { size: F * 0.85, color: 'rgba(230,236,232,0.85)', align: nar ? 'right' : 'center' });
+          }
+        } },
+      { main: 'An ordinary fast train and a maglev, side by side.', sub: 'In Indonesia, Whoosh (Jakarta to Bandung, since October 2023) reaches 350 km/h on steel wheels. Indonesia has no maglev line yet: so far only small research prototypes.',
+        eq: 'speed records: 574.8 km/h on wheels (France, 2007) and 603 km/h by maglev (Japan, 2015)  ·  both still push through air: twice the speed needs 8 times the power (P = ½ρC_dAv³)',
+        draw(c, t, b) {
+          const F = fz(b), nar = b.w < 700;
+          const all = [
+            ['Held up by', 'steel wheels on steel rails', 'magnets, about 10 mm from the track'],
+            ['Pushed by', 'motors turning the wheels: needs grip', 'coils in the track: no grip needed'],
+            ['Fastest in service', '350 km/h (Whoosh, Fuxing)', '431 km/h (2004 to 2021), 300 km/h now'],
+            ['Wear and noise', 'wheels and rails wear; it rumbles', 'nothing touches: little wear, quieter'],
+            ['Brakes', 'disc brakes and motors, limited by grip', 'the coils work backwards: no grip needed'],
+            ['Track', 'can run on ordinary lines too', 'needs its own guideway: costly to build'],
+          ];
+          const rows = nar ? [all[0], all[1], all[2], all[5]] : all;
+          const tw = Math.min(b.w * (nar ? 1 : 0.9), 1100), tx = b.x + (b.w - tw) / 2, c0 = tw * (nar ? 0.24 : 0.2), c1 = (tw - c0) / 2;
+          const fs = nar ? F * 0.82 : clamp(tw / 66, 13, 23), lh = fs * 1.18, pad = fs * 0.45;
+          const head = ['', 'Fast train on wheels', 'Maglev'];
+          const cols = [tx, tx + c0, tx + c0 + c1], ws = [c0, c1, c1];
+          const cell = (r, j) => wrap(c, r[j], ws[j] - 14, FONT(fs, j === 0 ? 700 : 600));
+          const hts = rows.map(r => Math.max(...[0, 1, 2].map(j => cell(r, j).length)) * lh + pad * 2);
+          const hh = fs * 1.9, total = hh + hts.reduce((a, h) => a + h, 0);
+          let y = b.y + Math.max(0, (b.h - total) / 2);
+          c.fillStyle = 'rgba(16,24,28,0.85)'; rrect(c, tx, y, tw, total, 12); c.fill();
+          c.strokeStyle = 'rgba(255,255,255,0.12)'; c.lineWidth = 1; rrect(c, tx, y, tw, total, 12); c.stroke();
+          text(c, head[1], cols[1] + c1 / 2, y + hh / 2, { size: fs * 1.05, w: 700, color: '#ffd9a8' });
+          text(c, head[2], cols[2] + c1 / 2, y + hh / 2, { size: fs * 1.05, w: 700, color: '#9df5b8' });
+          y += hh;
+          rows.forEach((r, i) => {
+            const a = clamp((t - 0.3 - i * 0.45) / 0.4, 0, 1), h = hts[i];
+            c.strokeStyle = 'rgba(255,255,255,0.1)'; c.lineWidth = 1; c.beginPath(); c.moveTo(tx + 10, y); c.lineTo(tx + tw - 10, y); c.stroke();
+            if (a > 0) [0, 1, 2].forEach(j => {
+              const L = cell(r, j), col = j === 0 ? `rgba(226,164,107,${a})` : j === 1 ? `rgba(255,236,214,${a})` : `rgba(214,252,226,${a})`;
+              L.forEach((ln, k) => text(c, ln, j === 0 ? cols[0] + 12 : cols[j] + c1 / 2, y + pad + lh * (k + 0.5) + (h - pad * 2 - L.length * lh) / 2, { size: fs, w: j === 0 ? 700 : 600, color: col, align: j === 0 ? 'left' : 'center' }));
+            });
+            y += h;
+          });
         } },
       { main: '30 km to the airport in about 8 minutes.', sub: 'By car through the city it takes about an hour. Now drive the train yourself!', eq: 'top speed 431 km/h until 2021, 300 km/h today',
         draw(c, t, b) {

@@ -61,13 +61,13 @@
   ];
   function drawNotes(ctx, g) {
     if (!g.wide) return;
-    const ink = skin.c('--note-ink'), t = home.noteT, fs = clamp(g.R0 * 0.12, 15, 19);
+    const ink = '#efe6cf', t = home.noteT, fs = clamp(g.R0 * 0.12, 15, 19);   // the notes sit on the dark glass in every scheme
     ctx.save(); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'center';
     CAPS.forEach((cap, i) => {
       const p = reduceMotion ? 1 : clamp((t - 0.4 - i * 0.5) / 0.9, 0, 1); if (p <= 0) return;
       const x = i === 0 ? g.cx : g.cx + g.half;
       ctx.save(); ctx.beginPath(); ctx.rect(x - g.half / 2, g.capY - fs * 1.4, g.half * p, fs * 3.2); ctx.clip();
-      ctx.fillStyle = ink; ctx.shadowColor = skin.c('--note-halo'); ctx.shadowBlur = 4;
+      ctx.fillStyle = ink; ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 4;
       ctx.font = `700 ${fs * 1.12}px Kalam, "Segoe Print", "Comic Sans MS", cursive`; ctx.fillText(cap[0], x, g.capY);
       ctx.font = `400 ${fs}px Kalam, "Segoe Print", "Comic Sans MS", cursive`; ctx.fillText(cap[1], x, g.capY + fs * 1.35);
       ctx.restore();
@@ -231,6 +231,37 @@
     home.t += dt * (reduceMotion ? 0.25 : 1);
     if (!reduceMotion) drawTracks(ctx, dt, W, H);
     const g = heroGeom(), st = heroStatic(g), cx = g.cx, cy = g.cy;
+    if (g.wide) {                                            // the two machines sit behind one big pane of dark glass, in a bezel
+      const S = home.stage, x = S.x - 10, y = S.y - 10, w = S.w + 20, h = S.h + 20, r = 18;
+      const rr = (xx, yy, ww, hh, rad) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(xx, yy, ww, hh, rad); else ctx.rect(xx, yy, ww, hh); };
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 18;
+      rr(x - 6, y - 6, w + 12, h + 12, r + 5); ctx.fillStyle = '#0c1012'; ctx.fill();
+      ctx.shadowColor = 'transparent';
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1; rr(x - 5.5, y - 5.5, w + 11, h + 11, r + 4.5); ctx.stroke();
+      const gl = ctx.createRadialGradient(x + w * 0.5, y + h * 0.42, 0, x + w * 0.5, y + h * 0.5, Math.max(w, h) * 0.75);
+      gl.addColorStop(0, '#111a1d'); gl.addColorStop(0.6, '#0a1013'); gl.addColorStop(1, '#05080a');
+      rr(x, y, w, h, r); ctx.fillStyle = gl; ctx.fill();
+      ctx.save(); rr(x, y, w, h, r); ctx.clip();
+      ctx.fillStyle = 'rgba(214,228,234,0.045)';                       // a faint graticule, like a scope screen
+      for (let gx = x + 24; gx < x + w; gx += 24) for (let gy = y + 24; gy < y + h; gy += 24) ctx.fillRect(gx, gy, 1, 1);
+      ctx.strokeStyle = 'rgba(214,228,234,0.07)'; ctx.setLineDash([3, 6]); ctx.beginPath(); ctx.moveTo(S.x + S.w / 2, y + 22); ctx.lineTo(S.x + S.w / 2, y + h - 22); ctx.stroke(); ctx.setLineDash([]);
+      const ref = ctx.createLinearGradient(x, y, x + w * 0.45, y + h * 0.7); ref.addColorStop(0, 'rgba(255,255,255,0.05)'); ref.addColorStop(0.35, 'rgba(255,255,255,0.012)'); ref.addColorStop(0.36, 'rgba(255,255,255,0)');
+      ctx.fillStyle = ref; ctx.fillRect(x, y, w, h);
+      ctx.restore();
+      ctx.strokeStyle = 'rgba(0,0,0,0.9)'; ctx.lineWidth = 1.5; rr(x, y, w, h, r); ctx.stroke();
+      ctx.restore();
+    }
+    if (g.wide) {                                            // a pool of light under each machine, so they stand on the bench
+      const pools = [[cx, cy, g.R0 * 2.0], [(g.gun.x0 + g.gun.x1) / 2, g.gun.y, g.R0 * 1.8]];
+      for (const [x, y, r] of pools) {
+        const gl = ctx.createRadialGradient(x, y - r * 0.15, 0, x, y, r); gl.addColorStop(0, 'rgba(255,224,176,0.085)'); gl.addColorStop(0.55, 'rgba(255,214,160,0.03)'); gl.addColorStop(1, 'rgba(255,214,160,0)');
+        ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+      }
+      const fy = cy + g.R0 * 1.42;
+      const sh = ctx.createRadialGradient(cx, fy, 0, cx, fy, g.R0 * 1.25); sh.addColorStop(0, 'rgba(0,0,0,0.42)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.save(); ctx.translate(cx, fy); ctx.scale(1, 0.12); ctx.translate(-cx, -fy); ctx.fillStyle = sh; ctx.beginPath(); ctx.arc(cx, fy, g.R0 * 1.25, 0, TAU); ctx.fill(); ctx.restore();
+    }
     ctx.save();
     if (!g.wide) ctx.globalAlpha = 0.42;
     ctx.drawImage(st.c, cx - st.pad, cy - st.pad, st.size, st.size);
@@ -318,7 +349,8 @@
   function updateHomeMissions() { const [d, n] = missions.count(); const el = $('#homeMissions'); if (el) el.textContent = `${d} / ${n}`; }
 
   /* ---------- guided tour ---------- */
-  const TOUR = [
+  const TOURS = {};
+  TOURS.lab = [
     { sel: null, title: 'Welcome to Project Lorentz', text: 'The name comes from the Lorentz force, F = q(E + v × B). A cyclotron uses both parts of it: the electric field gives the particle a push each time it crosses the gap, and the magnetic field bends it round in a circle so it comes back for the next push. This tour shows you around the Cyclotron screen in under a minute.' },
     { sel: '#stageWrap', title: 'The machine from above', text: 'The particle starts in the middle and spirals outwards between the two copper dees. Red and blue show which dee is positive. Drag the edge of the dees to make the machine bigger or smaller, drag the striped corner to resize the view, and scroll or pinch to zoom. The 3D key at the top right shows the whole electromagnet in 3D, and the key under it fills the screen; every other screen has both, plus a Ride button.' },
     { sel: '#btnRide', title: 'Ride the particle', text: 'Fly along with the particle, seen from just behind it. With sound on, you hear a thump at every push across the gap and a tick at every peak of the voltage. When the two stay together the beat is steady: that is the cyclotron resonance. Press V to switch views.' },
@@ -328,11 +360,37 @@
     { sel: '#screen-lab .data', title: 'Every number explained', text: 'The notebook explains each quantity in words. Show working puts your own numbers into each formula, step by step.' },
     { sel: '.lvl', title: 'Beginner or Intermediate', text: 'Beginner keeps only the main controls and adds plain-language notes and ? buttons. Intermediate adds the extra controls (pole gap, RF mode, relativity, experiments, display tools) and every step of the working.' },
     { sel: '#btnReal', title: 'Where is this used in real life?', text: 'This key shows where the physics is used outside class: a hospital cyclotron that makes the medicine for cancer scans, and a maglev train pulled by coils in the track. You can run both yourself.' },
-    { sel: '.nav-screens', title: 'More to explore', text: 'Fire a Gauss gun and test yourself in the physics quiz. Each station has a real machine to run: PET medicine in the Cyclotron, the maglev train in the Gauss gun.' },
+    { sel: '.nav-screens', title: 'More to explore', text: 'Fire a Gauss gun and test yourself in the physics quiz. The Gauss gun has its own tour: open it and press the ? key at the top right. Each station has a real machine to run: PET medicine in the Cyclotron, the maglev train in the Gauss gun.' },
   ];
-  let tourI = -1;
-  function tourStart() { showScreen('lab', true); tourI = 0; $('#tour').hidden = false; setTimeout(tourStep, 250); }
-  function tourEnd() { tourI = -1; $('#tour').hidden = true; store.set('cl-toured', true); }
+  // The Gauss gun's own tour: what everything on its screen is, left to right
+  TOURS.gauss = [
+    { sel: null, title: 'Welcome to the Gauss gun', text: 'A Gauss gun (a coil gun) fires an iron slug with magnetism. There is no gunpowder: each copper coil becomes an electromagnet for a moment, pulls the slug towards its middle, and switches off just as the slug gets there, so the slug keeps going. This tour shows you around in under a minute.' },
+    { sel: '#ggWrap', title: 'The gun, from the side', text: 'The slug sits at the left in a plastic barrel. The copper blocks are the coils. Each amber marker shows where that coil switches off, and each thin red line is a light gate that switches the next coil on. At the end, the chronograph measures the speed, and then the slug hits the target. Drag to move, scroll or pinch to zoom; the keys at the top right show it in 3D and full screen.' },
+    { sel: '#ggWrap .ride-btn', title: 'Ride the slug', text: 'Fly along with the slug and feel each coil pull it. With sound on, every coil gives a thump as it switches on.' },
+    { sel: '#ggWrap .xp-open', title: 'How it works', text: 'A slow, step-by-step explanation: why a coil pulls iron, why it must switch off at the middle, and which knob makes the gun faster, with the formulas and numbers. Press Space for each next step.' },
+    { sel: '#screen-gauss .arena-bar', title: 'Fire!', text: 'Press Fire, or the space bar. The capacitors charge, then the coils switch on one after another. Slow motion and Bullet time let you watch each coil pull. Replay shows the last shot again.' },
+    { sel: '#ggCoilPanels', title: 'Build your coils (on the right)', text: 'Number of coils: more coils give more pushes. Turns per coil and Current: both make each coil a stronger magnet, B = μ₀NI/ℓ. All three make the slug faster. Each ? button explains its control. Intermediate adds the switch-off point: switch off late and the coil pulls the slug back.' },
+    { sel: '#ggTarget', title: 'Choose a target', text: 'Pendulum: the slug hits a 100 g block hanging on strings, and how high it swings tells you the speed. Tin cans: knock them over. Sand box: it just stops the slug.' },
+    { sel: '#screen-gauss .rsim-entry', title: 'Real life: the maglev train', text: 'A maglev train is a Gauss gun 30 km long: coils in the track switch on one after another and pull the train along. Open it to drive the Shanghai maglev to the airport, and to see why it can go faster than a train on wheels.' },
+    { sel: '#ggNarrate', title: 'What is happening', text: 'This note explains each shot in plain words while it happens: which coil is pulling, and why the slug speeds up.' },
+    { sel: '#screen-gauss .gg-readouts', title: 'The readouts', text: 'Exit speed: how fast the slug leaves the barrel, measured by the chronograph. Kinetic energy: its energy of motion, ½mv². Intermediate adds Efficiency (how much of the electrical energy became motion; most of it heats the copper wire instead) and Strongest pull (the biggest force on the slug).' },
+    { sel: '#screen-gauss .gg-graphs', title: 'The graphs', text: 'The speed along the barrel jumps up at each coil. In Intermediate a second graph shows the pull: forwards before each coil’s middle, backwards after it if the coil is still on.' },
+    { sel: '#ggData', title: 'Every number explained', text: 'The notebook shows each result with its formula. Show working puts your own numbers into each formula, step by step.' },
+    { sel: '.lvl', title: 'Beginner or Intermediate', text: 'Beginner keeps the main controls and the plain-language notes. Intermediate adds the switch-off point, the slug and its material, experiments, missions, the second graph and the notebook.' },
+  ];
+  let tourI = -1, tourId = 'lab';
+  const TOUR_STORE = { lab: 'cl-toured', gauss: 'cl-toured-gauss' };
+  const visible = el => !!el && !!(el.offsetParent || el.getClientRects().length) && getComputedStyle(el).visibility !== 'hidden';
+  // keep only the steps whose part is on screen at this level
+  let TOUR = TOURS.lab;
+  function tourStart(which) {
+    tourId = which === 'gauss' ? 'gauss' : 'lab';
+    showScreen(tourId, true);
+    tourI = 0; $('#tour').hidden = false;
+    setTimeout(() => { TOUR = TOURS[tourId].filter(st => !st.sel || visible($(st.sel))); tourStep(); }, 250);
+  }
+  function tourEnd() { tourI = -1; $('#tour').hidden = true; store.set(TOUR_STORE[tourId], true); }
+  CL.tour = { start: tourStart };
   function tourStep() {
     if (tourI < 0) return;
     const st = TOUR[tourI];
@@ -378,8 +436,9 @@
         else (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen).call(document.documentElement);
       } catch (_) { /* not allowed in this frame */ }
     });
-    $('#btnTour').addEventListener('click', tourStart);
-    $('#homeTour').addEventListener('click', tourStart);
+    $('#btnTour').addEventListener('click', () => tourStart(current === 'gauss' ? 'gauss' : 'lab'));   // the ? key tours the screen you are on
+    $('#homeTour').addEventListener('click', () => tourStart('lab'));
+
     const hr = $('#homeRide'); if (hr) hr.addEventListener('click', () => { audio.unlock(); showScreen('lab', true); if (CL.lab) CL.lab.ride(true); });
     $('#tourNext').addEventListener('click', () => { if (tourI >= TOUR.length - 1) tourEnd(); else { tourI++; tourStep(); } });
     $('#tourBack').addEventListener('click', () => { if (tourI > 0) { tourI--; tourStep(); } });
@@ -448,6 +507,9 @@
     sizeHome();
     // the title sequence plays when the app opens on Home (add ?nointro to the address to skip it)
     if (current === 'home' && !/[?&]nointro\b/.test(location.search)) { try { CL.intro.play(true); } catch (err) { console.error('intro', err); } }
+    // Home's one orchestrated entrance: after the title sequence, or at once without it
+    const enter = () => { if (current !== 'home' || reduceMotion) return; document.body.classList.add('is-entering'); setTimeout(() => document.body.classList.remove('is-entering'), 1600); };
+    if (CL.intro && CL.intro.on) { const off = CL.bus.on('intro', on => { if (!on) { enter(); if (typeof off === 'function') off(); } }); } else enter();
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { skin.read(); CL.bus.emit("skin", skin.name); sizeHome(); const s = CL.screens[current]; if (s && s.resize) s.resize(); });
     requestAnimationFrame(loop);
     cornerGuard();
